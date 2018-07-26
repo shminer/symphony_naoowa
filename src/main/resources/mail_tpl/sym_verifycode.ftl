@@ -21,7 +21,7 @@
                                                         </tbody>
                                                     </table>
                                                     <div style="font-size:12px;color:#33ae81">
-                                                        <a href="${servePath}" style="font-weight:bold;color:#333;text-decoration:none" target="_blank">黑客与画家 • 账号</a>
+                                                        <a href="${servePath}" style="font-weight:bold;color:#333;text-decoration:none" target="_blank">闹哇社区注册</a>
                                                     </div>
                                                     <table width="350" cellpadding="0" cellspacing="0" border="0">
                                                         <tbody>
@@ -44,7 +44,7 @@
                                                         <tbody>
                                                             <tr style="border-collapse:collapse">
                                                                 <td valign="middle" style="border-collapse:collapse;font-family:Helvetica,Arial,sans-serif">
-                                                                    <div style="font-size:12px;color:#33ae81"><a href="${servePath}/" style="font-weight:bold;color:#333;text-decoration:none" target="_blank">访问网站 ➜</a></div>
+                                                                    <div style="font-size:12px;color:#33ae81"><a href="${servePath}/" style="font-weight:bold;color:#333;text-decoration:none" target="_blank">打开社区 ➜</a></div>
                                                                 </td>
                                                             </tr>
                                                         </tbody>
@@ -66,7 +66,7 @@
                             <tr style="border-collapse:collapse">
                                 <td width="640" align="center" bgcolor="#FFFFFF" style="border-collapse:collapse;font-family:Helvetica,Arial,sans-serif">
                                     <a href="${servePath}" target="_blank">
-                                        <img height="140" width="640" src="${staticServePath}/images/mail/verify-banner1.png" alt="黑客派">
+                                        <img height="140" width="640" src="${staticServePath}/images/mail/verify-banner1.png" alt="闹哇">
                                     </a>
                                 </td>
                             </tr>
@@ -94,14 +94,15 @@
                                                                     </div>
                                                                     <div style="border-bottom-style:solid;border-bottom-width:1px;border-bottom-color:#eee;margin-bottom:30px"></div>
                                                                     <p align="left" style="font-size:18px;line-height:24px;color:#333;font-weight:bold;margin-top:0px;margin-bottom:18px;font-family:Helvetica,Arial,sans-serif">
-                                                                        黑客与画家
+                                                                        闹哇社区
                                                                     </p>
                                                                     <div align="left" style="font-size:13px;line-height:20px;color:#444444;margin-top:0px;margin-bottom:18px;font-family:Helvetica,Arial,sans-serif">
                                                                         <table>
                                                                             <tbody><tr style="border-collapse:collapse">
                                                                                     <td style="border-collapse:collapse;font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;padding:0 0 15px">
                                                                                         <ul>
-                                                                                            <li>我们正在构建一个活跃的小众社区</li>
+                                                                                            <li>我们正在构建一个活跃的小众社</li>
+                                                                                            <li>让更多相同兴趣爱好的人可以汇集起来</li>
                                                                                             <li>大家在这里相互信任，以 平等 • 自由 • 奔放 的价值观进行分享交流</li>
                                                                                             <li>最终，希望大家能够找到与自己志同道合的伙伴，共同成长</li>
                                                                                         </ul>
@@ -158,7 +159,7 @@
                                                 </td>
                                                 <td width="40" style="border-collapse:collapse;font-family:Helvetica,Arial,sans-serif"></td>
                                                 <td width="180" valign="top" style="border-collapse:collapse;font-family:Helvetica,Arial,sans-serif">
-                                                    <p align="right" style="font-size:12px;line-height:18px;color:#999;margin-top:0px;margin-bottom:15px;white-space:normal"><span>© 2016 <a href="${servePath}" style="color:#4183c4;font-weight:bold;text-decoration:none" target="_blank">hacpai.com</a> <span style="color:#333;">黑客与画家</span></span><br style="line-height:100%"><span style="font-size:12px;color:#ccc;">Feel easy about trust.</span></p>
+                                                    <p align="right" style="font-size:12px;line-height:18px;color:#999;margin-top:0px;margin-bottom:15px;white-space:normal"><span>© 2018 <a href="${servePath}" style="color:#4183c4;font-weight:bold;text-decoration:none" target="_blank">naoowa.cn</a> <span style="color:#333;">闹哇社区</span></span><br style="line-height:100%"><span style="font-size:12px;color:#ccc;">前晋前晋文化传播有限公司</span></p>
                                                 </td>
                                                 <td width="30" style="border-collapse:collapse;font-family:Helvetica,Arial,sans-serif"></td>
                                             </tr>
