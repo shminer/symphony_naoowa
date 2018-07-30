@@ -466,47 +466,6 @@ public class IndexProcessor {
     }
 
     /**
-     * Shows about.
-     *
-     * @param response the specified response
-     * @throws Exception exception
-     */
-    @RequestProcessing(value = "/about", method = HTTPRequestMethod.GET)
-    @Before(adviceClass = StopwatchStartAdvice.class)
-    @After(adviceClass = StopwatchEndAdvice.class)
-    public void showAbout(final HttpServletResponse response) throws Exception {
-        response.setStatus(HttpServletResponse.SC_MOVED_PERMANENTLY);
-        response.setHeader("Location", "https://hacpai.com/article/1440573175609");
-        response.flushBuffer();
-    }
-
-    /**
-     * Shows b3log.
-     *
-     * @param context  the specified context
-     * @param request  the specified request
-     * @param response the specified response
-     * @throws Exception exception
-     */
-    @RequestProcessing(value = "/b3log", method = HTTPRequestMethod.GET)
-    @Before(adviceClass = StopwatchStartAdvice.class)
-    @After(adviceClass = {PermissionGrant.class, StopwatchEndAdvice.class})
-    public void showB3log(final HTTPRequestContext context,
-                          final HttpServletRequest request, final HttpServletResponse response) throws Exception {
-        final AbstractFreeMarkerRenderer renderer = new SkinRenderer(request);
-        context.setRenderer(renderer);
-        renderer.setTemplateName("other/b3log.ftl");
-        final Map<String, Object> dataModel = renderer.getDataModel();
-
-        dataModelService.fillHeaderAndFooter(request, response, dataModel);
-        final int avatarViewMode = (int) request.getAttribute(UserExt.USER_AVATAR_VIEW_MODE);
-        dataModelService.fillRandomArticles(dataModel);
-        dataModelService.fillSideHotArticles(dataModel);
-        dataModelService.fillSideTags(dataModel);
-        dataModelService.fillLatestCmts(dataModel);
-    }
-
-    /**
      * Shows kill browser page with the specified context.
      *
      * @param context  the specified context
