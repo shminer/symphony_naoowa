@@ -34,6 +34,7 @@
         <div class="main">
             <div class="wrapper">
                 <div class="index-main">
+					<#--
                     <div class="index-tabs fn-flex" id="articles">
                         <span class="current" data-index="0">
                         </span>
@@ -42,6 +43,7 @@
                         <span class="users" data-index="2">
                         </span>
                     </div>
+					-->
                     <div class="index-tabs-panels list article-list">
                         <ul>
                             <#list recentArticles as article>
@@ -62,12 +64,14 @@
                     </div>
                 </div>
                 <div class="index-side">
+					<#--
                     <div class="index-tabs fn-flex">
                         <span class="perfect">
                         </span>
                         <span class="check">
                         </span>
                     </div>
+					-->
                     <div class="perfect-panel list">
                         <ul>
                             <#list perfectArticles as article>

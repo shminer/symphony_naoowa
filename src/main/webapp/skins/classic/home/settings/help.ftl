@@ -35,7 +35,7 @@
                 <span class="ft-gray">${basicTipLabel}</span>
             </li>
             <li>
-                <a href="https://hacpai.com/article/1474030007391">${hotKeyLabel}</a>
+                <a href="https://naoowa.cn/article/1532935570253">${hotKeyLabel}</a>
                 <span class="ft-gray">${hotKeyTipLabel}</span>
             </li>
             <li>
