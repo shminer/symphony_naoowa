@@ -21,7 +21,7 @@
     <div class="wrapper ft-smaller">
         <div class="footer-nav">
             <span>&COPY; ${year}</span>
-            <a rel="copyright" href="https://hacpai.com" target="_blank">hacpai.com</a>
+            <a rel="copyright" href="${servePath}" target="_blank">naoowa.cn</a>
             ${visionLabel}
         </div>
         <div class="fn-hr5"></div>
@@ -30,8 +30,8 @@
         </div>
         <div class="fn-hr5"></div>
         <div>
-            <span>Powered by <a href="https://b3log.org" target="_blank">B3log 开源</a> •
-                <a href="https://sym.b3log.org" target="_blank">Sym</a>
+            <span>社区建立离不开 <a href="https://b3log.org" target="_blank">B3log 开源</a> •
+                <a href="https://github.com/shminer/symphony_naoowa" target="_blank">闹哇社区开源</a>
                 ${version} • ${elapsed?c}ms</span>
         </div>
     </div>
@@ -87,3 +87,4 @@
 </script>
 </#if>
 ${footerMobileCode}
+
