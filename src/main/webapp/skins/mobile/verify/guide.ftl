@@ -115,7 +115,7 @@
                         <div class="fn-none list">
                             <ul>
                                 <li>
-                                    <a href="${servePath}/about">${getStartLabel}</a>
+                                    <a href="${servePath}/article/1530607945360">${getStartLabel}</a>
                                     <span class="ft-gray">${getStartTipLabel}</span>
                                 </li>
                                 <li>

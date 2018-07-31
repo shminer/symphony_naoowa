@@ -129,7 +129,7 @@
                             <div class="ft-center"> <svg><use xlink:href="#logo"></use></svg> </div> <br/>
                             <ul>
                                 <li>
-                                    <a href="${servePath}/about">${getStartLabel}</a>
+                                    <a href="${servePath}/article/1530607945360">${getStartLabel}</a>
                                     <span class="ft-gray">${getStartTipLabel}</span>
                                 </li>
                                 <li>
