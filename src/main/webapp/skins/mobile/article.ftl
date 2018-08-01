@@ -224,8 +224,6 @@
                                                 <#if !article.articleOfferedComment.fromClient>
                                                     <#if article.articleOfferedComment.commentAnonymous == 0><a rel="nofollow" href="${servePath}/member/${article.articleOfferedComment.commentAuthorName}" class="ft-gray"></#if><span class="ft-gray">${article.articleOfferedComment.commentAuthorName}</span><#if article.articleOfferedComment.commentAnonymous == 0></a></#if>
                                                 <#else><span class="ft-gray">${article.articleOfferedComment.commentAuthorName}</span>
-                                                <span class="ft-fade"> • </span>
-                                                <a rel="nofollow" class="ft-green" href="https://hacpai.com/article/1457158841475">API</a>
                                                 </#if>
                                                 <span class="ft-fade">• ${article.articleOfferedComment.timeAgo}</span>
 

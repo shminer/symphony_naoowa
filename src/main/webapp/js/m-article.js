@@ -734,7 +734,7 @@ var Article = {
         mode: 'circulation',
         music: {
           title: $it.data('title'),
-          author: '<a href="https://hacpai.com/article/1464416402922" target="_blank">音乐分享</a>',
+          author: '<a href="https://naoowa.cn" target="_blank">音乐分享</a>',
           url: $it.data('url'),
           pic: Label.staticServePath + '/images/music.png'
         }
@@ -756,7 +756,7 @@ var Article = {
       preload: 'none',
       music: {
         title: '语音预览',
-        author: '<a href="https://hacpai.com/member/v" target="_blank">小薇</a>',
+        author: '<a href="https://naoowa.cn/member/v" target="_blank">小薇</a>',
         url: $articleAudio.data('url'),
         pic: Label.staticServePath + '/images/blank.png'
       }

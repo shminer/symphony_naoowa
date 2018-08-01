@@ -286,7 +286,7 @@ var Util = {
       return false;
     }).bind('keyup', 'Shift+/', function (event) {
       // shift/⇧ ? 新窗口打开键盘快捷键说明文档
-      window.open('https://hacpai.com/article/1474030007391');
+      window.open('https://naoowa.cn/article/1532935570253');
       return false;
     }).bind('keyup', 'j', function (event) {
       // j 移动到下一项
