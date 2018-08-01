@@ -73,8 +73,6 @@
 <canvas class="canvas"></canvas>
 <p class="text">
     正在跳转至 <a href="${forwardURL}">${forwardURL}</a><br/>
-    <a href="https://github.com/b3log/symphony">GitHub</a> &nbsp;
-    <a href="https://b3log.org/">B3log</a>
 </p>
 <script src="${staticServePath}/js/lib/jquery/jquery-3.1.0.min.js"></script>
 <script>
@@ -86,7 +84,7 @@
         init: function () {
             S.Drawing.init('.canvas');
             document.body.classList.add('body--ready');
-            var text = 'HacPai';
+            var text = 'NAOOWA';
             S.UI.simulate(text);
             S.Drawing.loop(function () {
                 S.Shape.render();
