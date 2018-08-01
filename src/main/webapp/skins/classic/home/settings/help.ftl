@@ -27,7 +27,7 @@
     <div class="module-panel">
         <ul class="module-list">
             <li>
-                <a href="${servePath}/about">${getStartLabel}</a>
+                <a href="${servePath}/article/1530607945360">${getStartLabel}</a>
                 <span class="ft-gray">${getStartTipLabel}</span>
             </li>
             <li>
@@ -41,9 +41,6 @@
             <li>
                 <a href="${servePath}/guide/markdown">Markdown ${tutorialLabel}</a>
                 <span class="ft-gray">${markdownTutorialTipLabel}</span>
-            </li>
-            <li>
-            ${pipeIntroLabel}
             </li>
         </ul>
     </div>
