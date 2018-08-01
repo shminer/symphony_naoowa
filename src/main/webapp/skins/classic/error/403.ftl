@@ -37,6 +37,7 @@
                         <button onclick="Util.goRegister()" class="green">${nowLabel}${registerLabel}</button>
                         &nbsp; &nbsp; &nbsp; &nbsp;
                         ${indexIntroLabel} &nbsp; &nbsp;
+						<#--
                         <a href="https://github.com/b3log/symphony" target="_blank" class="tooltipped tooltipped-n" aria-label="${siteCodeLabel}">
                             <svg class="icon-github"><use xlink:href="#github"></use></svg></a> &nbsp;
                         <a href="http://weibo.com/u/2778228501" target="_blank" class="tooltipped tooltipped-n" aria-label="${followWeiboLabel}">
@@ -44,6 +45,7 @@
                         <a target="_blank" rel="noopener" class="tooltipped tooltipped-n" aria-label="${joinTelegramLabel}"
                            href="https://t.me/b3log">
                             <svg class="icon-telegram"><use xlink:href="#icon-telegram"></use></svg></a>
+						-->
                     </div>
                 </div>
             </div>
