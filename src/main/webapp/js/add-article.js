@@ -251,7 +251,7 @@ var AddArticle = {
           {name: 'ordered-list'},
           {name: 'view'},
           {name: 'fullscreen'},
-          {name: 'question', action: 'https://hacpai.com/guide/markdown'},
+          {name: 'question', action: 'https://naoowa.cn/guide/markdown'},
         ],
         status: false,
       })
@@ -497,7 +497,7 @@ var AddArticle = {
             {name: 'ordered-list'},
             {name: 'view'},
             {name: 'fullscreen'},
-            {name: 'question', action: 'https://hacpai.com/guide/markdown'},
+            {name: 'question', action: 'https://naoowa.cn/guide/markdown'},
           ],
           extraKeys: {
             'Alt-/': 'autocompleteUserName',
