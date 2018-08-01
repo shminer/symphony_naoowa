@@ -72,7 +72,7 @@ public class ForwardProcessor {
 
         String to = request.getParameter(Common.GOTO);
         if (StringUtils.isBlank(to)) {
-            to = "https://hacpai.com";
+            to = "https://naoowa.cn";
         }
         dataModel.put("forwardURL", to);
 

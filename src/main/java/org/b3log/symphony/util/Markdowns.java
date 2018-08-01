@@ -357,7 +357,7 @@ public final class Markdowns {
                                             text = text.replace('@' + userName + (nextIsBr ? "" : " "), "@" + UserExt.getUserLink(userName));
                                         }
                                         text = text.replace("@participants ",
-                                                "@<a href='https://hacpai.com/article/1458053458339' target='_blank' class='ft-red'>participants</a> ");
+                                                "@<a href='https://naoowa.cn' target='_blank' class='ft-red'>participants</a> ");
                                     } finally {
                                         JdbcRepository.dispose();
                                     }
