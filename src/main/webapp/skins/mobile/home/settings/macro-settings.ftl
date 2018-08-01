@@ -65,7 +65,7 @@
                     <li<#if 'invite' == type> class="fn-none"</#if>><a href="${servePath}/settings/invite">${inviteLabel}</a></li>
                     <li<#if 'function' == type> class="fn-none"</#if>><a href="${servePath}/settings/function">${functionLabel}</a></li>
                     <li<#if 'point' == type> class="fn-none"</#if>><a href="${servePath}/settings/point">${pointLabel}</a></li>
-                    <li<#if 'location' == type> class="fn-none"</#if>><a href="${servePath}/settings/location">${geoLabel}</a></li>
+                    <#-- <li<#if 'location' == type> class="fn-none"</#if>><a href="${servePath}/settings/location">${geoLabel}</a></li> -->
                     <li<#if 'privacy' == type> class="fn-none"</#if>><a href="${servePath}/settings/privacy">${privacyLabel}</a></li>
                     <li<#if 'b3' == type> class="fn-none"</#if>><a href="${servePath}/settings/b3">B3</a></li>
                     <li<#if 'i18n' == type> class="fn-none"</#if>><a href="${servePath}/settings/i18n">${i18nLabel}</a></li>
