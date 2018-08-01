@@ -40,9 +40,8 @@
                     ${inviteLabel}
                     <#elseif type == "function">
                     ${functionLabel}
-                    <#-- <#elseif type == "point">
+                    <#elseif type == "point">
                     ${pointLabel}
-					-->
                     <#elseif type == "privacy">
                     ${privacyLabel}
                     <#elseif type == "account">
