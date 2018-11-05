@@ -28,11 +28,16 @@ import org.json.JSONObject;
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
  * @author Bill Ho
- * @version 2.13.0.0, May 23, 2018
+ * @version 2.15.0.0, Aug 29, 2018
  * @see org.b3log.latke.model.User
  * @since 0.2.0
  */
 public final class UserExt {
+
+    /**
+     * Key of status of using forward page.
+     */
+    public static final String USER_FORWARD_PAGE_STATUS = "userForwardPageStatus";
 
     /**
      * Key of user guide step.
@@ -85,11 +90,6 @@ public final class UserExt {
     public static final String USER_LIST_VIEW_MODE = "userListViewMode";
 
     /**
-     * Key of forge link status.
-     */
-    public static final String USER_FORGE_LINK_STATUS = "userForgeLinkStatus";
-
-    /**
      * Key of user breezemoons status
      */
     public static final String USER_BREEZEMOON_STATUS = "userBreezemoonStatus";
@@ -140,11 +140,6 @@ public final class UserExt {
     public static final String USER_ONLINE_STATUS = "userOnlineStatus";
 
     /**
-     * Key of user timeline status.
-     */
-    public static final String USER_TIMELINE_STATUS = "userTimelineStatus";
-
-    /**
      * Key of user User-Agent status.
      */
     public static final String USER_UA_STATUS = "userUAStatus";
@@ -163,11 +158,6 @@ public final class UserExt {
      * Key of user comment view mode.
      */
     public static final String USER_COMMENT_VIEW_MODE = "userCommentViewMode";
-
-    /**
-     * Key of sync to client.
-     */
-    public static final String SYNC_TO_CLIENT = "syncWithSymphonyClient";
 
     /**
      * Key of user geo status.
@@ -310,26 +300,6 @@ public final class UserExt {
     public static final String USER_AVATAR_URL = "userAvatarURL";
 
     /**
-     * Key of user B3log key.
-     */
-    public static final String USER_B3_KEY = "userB3Key";
-
-    /**
-     * Key of user B3log client add article URL.
-     */
-    public static final String USER_B3_CLIENT_ADD_ARTICLE_URL = "userB3ClientAddArticleURL";
-
-    /**
-     * Key of user B3log client update article URL.
-     */
-    public static final String USER_B3_CLIENT_UPDATE_ARTICLE_URL = "userB3ClientUpdateArticleURL";
-
-    /**
-     * Key of user B3log client add comment URL.
-     */
-    public static final String USER_B3_CLIENT_ADD_COMMENT_URL = "userB3ClientAddCommentURL";
-
-    /**
      * Key of online flag.
      */
     public static final String USER_ONLINE_FLAG = "userOnlineFlag";
@@ -428,21 +398,16 @@ public final class UserExt {
      */
     public static final String USER_BUILTIN_EMAIL_SUFFIX = "@sym.b3log.org";
 
-    //// Default Commenter constants
+    //// Community Bot constants
     /**
-     * Default commenter name.
+     * Bot name.
      */
-    public static final String DEFAULT_CMTER_NAME = "Default Commenter";
+    public static final String COM_BOT_NAME = "ComBot";
 
     /**
-     * Default commenter email.
+     * Bot email.
      */
-    public static final String DEFAULT_CMTER_EMAIL = "default_commenter" + USER_BUILTIN_EMAIL_SUFFIX;
-
-    /**
-     * Default commenter role.
-     */
-    public static final String DEFAULT_CMTER_ROLE = "defaultCommenterRole";
+    public static final String COM_BOT_EMAIL = "combot" + USER_BUILTIN_EMAIL_SUFFIX;
 
     //// Null user
     /**
@@ -482,6 +447,11 @@ public final class UserExt {
      */
     public static final int USER_STATUS_C_INVALID_LOGIN = 3;
 
+    /**
+     * User status - deactivated.
+     */
+    public static final int USER_STATUS_C_DEACTIVATED = 4;
+
     //// Join point rank constants
     /**
      * User join point rank - join.
@@ -515,12 +485,12 @@ public final class UserExt {
     public static final int USER_XXX_STATUS_C_PRIVATE = 1;
 
     /**
-     * User XXX (UA) status - enabled.
+     * User XXX status - enabled.
      */
     public static final int USER_XXX_STATUS_C_ENABLED = 0;
 
     /**
-     * User XXX (UA) status - disabled.
+     * User XXX status - disabled.
      */
     public static final int USER_XXX_STATUS_C_DISABLED = 1;
 
@@ -659,10 +629,28 @@ public final class UserExt {
         return hex.substring(0, 6);
     }
 
+
+    /**
+     * Checks the specified email whether in a whitelist mail domain.
+     *
+     * @param email the specified email
+     * @return {@code true} if it is, returns {@code false} otherwise
+     */
+    public static boolean isWhitelistMailDomain(final String email) {
+        final String whitelistMailDomains = Symphonys.get("whitelist.mailDomains");
+        if (StringUtils.isBlank(whitelistMailDomains)) {
+            return true;
+        }
+
+        final String domain = StringUtils.substringAfter(email, "@");
+
+        return StringUtils.containsIgnoreCase(whitelistMailDomains, domain);
+    }
+
     /**
      * Checks the specified user name whether is a reserved user name.
      *
-     * @param userName the specified tag string
+     * @param userName the specified username
      * @return {@code true} if it is, returns {@code false} otherwise
      */
     public static boolean isReservedUserName(final String userName) {
@@ -672,7 +660,8 @@ public final class UserExt {
             }
         }
 
-        return false;
+        return StringUtils.containsIgnoreCase(userName, UserExt.ANONYMOUS_USER_NAME);
+
     }
 
     /**

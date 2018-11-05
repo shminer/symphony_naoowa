@@ -21,23 +21,20 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
+import org.b3log.latke.util.URLs;
 import org.b3log.symphony.model.Common;
 import org.b3log.symphony.model.Link;
 import org.json.JSONObject;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.SocketTimeoutException;
 import java.net.URL;
-import java.util.*;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -56,11 +53,10 @@ public final class Links {
     private static final Logger LOGGER = Logger.getLogger(Links.class);
 
     /**
-     * Gets links from the specified HTML.
+     * Gets link from the specified URL.
      *
-     * @param baseURL the specified base URL
-     * @param html    the specified HTML
-     * @return a list of links, each of them like this:      <pre>
+     * @param url the specified URL
+     * @return link like this: <pre>
      * {
      *     "linkAddr": "https://hacpai.com/article/1440573175609",
      *     "linkTitle": "黑客派简介",
@@ -71,66 +67,14 @@ public final class Links {
      * }
      * </pre>
      */
-    public static List<JSONObject> getLinks(final String baseURL, final String html) {
-        final Document doc = Jsoup.parse(html, baseURL);
-        final Elements urlElements = doc.select("a");
-
-        final Set<String> urls = new HashSet<>();
-        final List<Spider> spiders = new ArrayList<>();
-
-        String url = null;
-        for (final Element urlEle : urlElements) {
-            try {
-                url = urlEle.absUrl("href");
-                if (StringUtils.isBlank(url) || !StringUtils.contains(url, "://")) {
-                    url = StringUtils.substringBeforeLast(baseURL, "/") + url;
-                }
-
-                final URL formedURL = new URL(url);
-                final String protocol = formedURL.getProtocol();
-                final String host = formedURL.getHost();
-                final int port = formedURL.getPort();
-                final String path = formedURL.getPath();
-
-                url = protocol + "://" + host;
-                if (-1 != port && 80 != port && 443 != port) {
-                    url += ":" + port;
-                }
-                url += path;
-
-                if (StringUtils.endsWith(url, "/")) {
-                    url = StringUtils.substringBeforeLast(url, "/");
-                }
-
-                urls.add(url);
-            } catch (final Exception e) {
-                LOGGER.warn("Can't parse [" + url + "]");
-            }
-        }
-
-        final List<JSONObject> ret = new ArrayList<>();
-
+    public static JSONObject getLink(final String url) {
         try {
-            for (final String u : urls) {
-                spiders.add(new Spider(u));
-            }
-
-            final List<Future<JSONObject>> results = Symphonys.EXECUTOR_SERVICE.invokeAll(spiders);
-            for (final Future<JSONObject> result : results) {
-                final JSONObject link = result.get();
-                if (null == link) {
-                    continue;
-                }
-
-                ret.add(link);
-            }
+            return Symphonys.EXECUTOR_SERVICE.submit(new Spider(url)).get();
         } catch (final Exception e) {
-            LOGGER.log(Level.ERROR, "Parses URLs failed", e);
+            LOGGER.log(Level.ERROR, "Parses URL [" + url + "] failed", e);
+
+            return null;
         }
-
-        Collections.sort(ret, Comparator.comparingInt(link -> link.optInt(Link.LINK_BAIDU_REF_CNT)));
-
-        return ret;
     }
 
     private static boolean containsChinese(final String str) {
@@ -152,14 +96,14 @@ public final class Links {
         }
 
         @Override
-        public JSONObject call() throws Exception {
-            final int TIMEOUT = 2000;
+        public JSONObject call() {
+            final int TIMEOUT = 5000;
 
             try {
                 final JSONObject ret = new JSONObject();
 
                 // Get meta info of the URL
-                final Connection.Response res = Jsoup.connect(url).timeout(TIMEOUT).followRedirects(false).execute();
+                final Connection.Response res = Jsoup.connect(url).timeout(TIMEOUT).followRedirects(true).execute();
                 if (HttpServletResponse.SC_OK != res.statusCode()) {
                     return null;
                 }
@@ -203,7 +147,7 @@ public final class Links {
                 int baiduRefCnt = StringUtils.countMatches(baiduRes, "<em>" + url + "</em>");
                 if (1 > baiduRefCnt) {
                     ret.put(Link.LINK_BAIDU_REF_CNT, baiduRefCnt);
-                    LOGGER.debug(ret.optString(Link.LINK_ADDR));
+                    // LOGGER.debug(ret.optString(Link.LINK_ADDR));
 
                     return ret;
                 } else {
@@ -221,14 +165,15 @@ public final class Links {
                     baiduRefCnt += StringUtils.countMatches(baiduRes, "<em>" + url + "</em>");
 
                     ret.put(Link.LINK_BAIDU_REF_CNT, baiduRefCnt);
-                    LOGGER.debug(ret.optString(Link.LINK_ADDR));
+                    // LOGGER.debug(ret.optString(Link.LINK_ADDR));
 
                     return ret;
                 }
             } catch (final SocketTimeoutException e) {
                 return null;
             } catch (final Exception e) {
-                LOGGER.log(Level.WARN, "Parses URL [" + url + "] failed", e);
+                LOGGER.log(Level.TRACE, "Parses URL [" + url + "] failed", e);
+
                 return null;
             }
         }

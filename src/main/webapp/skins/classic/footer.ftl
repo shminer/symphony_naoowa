@@ -53,6 +53,7 @@
 <script src="${staticServePath}/js/common${miniPostfix}.js?${staticResourceVersion}"></script>
 <script>
     var Label = {
+        markedAvailable: ${markedAvailable?c},
         reportSuccLabel: '${reportSuccLabel}',
         breezemoonLabel: '${breezemoonLabel}',
         confirmRemoveLabel: "${confirmRemoveLabel}",
@@ -71,14 +72,14 @@
         staticServePath: "${staticServePath}",
         isLoggedIn: ${isLoggedIn?c},
         funNeedLoginLabel: '${funNeedLoginLabel}',
-		notificationCommentedLabel: '${notificationCommentedLabel}',
-		notificationReplyLabel: '${notificationReplyLabel}',
-		notificationAtLabel: '${notificationAtLabel}',
-		notificationFollowingLabel: '${notificationFollowingLabel}',
-		pointLabel: '${pointLabel}',
-		sameCityLabel: '${sameCityLabel}',
-		systemLabel: '${systemLabel}',
-		newFollowerLabel: '${newFollowerLabel}',
+        notificationCommentedLabel: '${notificationCommentedLabel}',
+        notificationReplyLabel: '${notificationReplyLabel}',
+        notificationAtLabel: '${notificationAtLabel}',
+        notificationFollowingLabel: '${notificationFollowingLabel}',
+        pointLabel: '${pointLabel}',
+        sameCityLabel: '${sameCityLabel}',
+        systemLabel: '${systemLabel}',
+        newFollowerLabel: '${newFollowerLabel}',
         makeAsReadLabel: '${makeAsReadLabel}',
         <#if isLoggedIn>
             currentUserName: '${currentUser.userName}',
@@ -86,28 +87,27 @@
         <#if csrfToken??>
             csrfToken: '${csrfToken}'
         </#if>
-    };
+    }
 
     <#if isLoggedIn>
-    Label.userKeyboardShortcutsStatus = '${currentUser.userKeyboardShortcutsStatus}';
+    Label.userKeyboardShortcutsStatus = '${currentUser.userKeyboardShortcutsStatus}'
     </#if>
 
-    Util.init(${isLoggedIn?c});
+    Util.init(${isLoggedIn?c})
 
     <#if isLoggedIn>
     // Init [User] channel
-    Util.initUserChannel("${wsScheme}://${serverHost}:${serverPort}${contextPath}/user-channel");
+    Util.initUserChannel("${wsScheme}://${serverHost}:${serverPort}${contextPath}/user-channel")
     </#if>
 
     <#if mouseEffects>
-    Util.mouseClickEffects();
+    Util.mouseClickEffects()
     </#if>
 </script>
 <#if algoliaEnabled>
 <script src="${staticServePath}/js/lib/algolia/algolia.min.js"></script>
 <script>
-    Util.initSearch('${algoliaAppId}', '${algoliaSearchKey}', '${algoliaIndex}');
+    Util.initSearch('${algoliaAppId}', '${algoliaSearchKey}', '${algoliaIndex}')
 </script>
 </#if>
 ${footerPCCode}
-

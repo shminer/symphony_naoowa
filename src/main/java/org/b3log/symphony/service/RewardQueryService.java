@@ -17,7 +17,7 @@
  */
 package org.b3log.symphony.service;
 
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.repository.*;
@@ -53,7 +53,7 @@ public class RewardQueryService {
      * Gets rewarded count.
      *
      * @param dataId the specified data id
-     * @param type the specified type
+     * @param type   the specified type
      * @return rewarded count
      */
     public long rewardedCount(final String dataId, final int type) {
@@ -78,7 +78,7 @@ public class RewardQueryService {
      *
      * @param userId the specified user id
      * @param dataId the specified data id
-     * @param type the specified type
+     * @param type   the specified type
      * @return {@code true} if has rewared
      */
     public boolean isRewarded(final String userId, final String dataId, final int type) {

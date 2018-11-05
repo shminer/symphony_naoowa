@@ -20,13 +20,12 @@
 <div class="footer">
     <div class="wrapper ft-smaller">
         <div class="footer-nav">
-            <span>&COPY; ${year}</span>
             <a rel="copyright" href="${servePath}" target="_blank">naoowa.cn</a>
-            ${visionLabel}
+        ${visionLabel}
         </div>
         <div class="fn-hr5"></div>
         <div>
-            ${sloganLabel}
+        ${sloganLabel}
         </div>
         <div class="fn-hr5"></div>
         <div>
@@ -72,19 +71,18 @@
          <#if csrfToken??>,
             csrfToken: '${csrfToken}'
          </#if>
-    };
-    Util.init(${isLoggedIn?c});
+    }
+    Util.init(${isLoggedIn?c})
     
     <#if isLoggedIn>
     // Init [User] channel
-    Util.initUserChannel("${wsScheme}://${serverHost}:${serverPort}${contextPath}/user-channel");
+    Util.initUserChannel("${wsScheme}://${serverHost}:${serverPort}${contextPath}/user-channel")
     </#if>
 </script>
 <#if algoliaEnabled>
 <script src="${staticServePath}/js/lib/algolia/algolia.min.js"></script>
 <script>
-    Util.initSearch('${algoliaAppId}', '${algoliaSearchKey}', '${algoliaIndex}');
+    Util.initSearch('${algoliaAppId}', '${algoliaSearchKey}', '${algoliaIndex}')
 </script>
 </#if>
 ${footerMobileCode}
-

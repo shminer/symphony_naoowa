@@ -17,10 +17,12 @@
  */
 package org.b3log.symphony.service;
 
+import jodd.http.HttpRequest;
+import jodd.http.HttpResponse;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.Pagination;
@@ -28,8 +30,6 @@ import org.b3log.latke.model.User;
 import org.b3log.latke.repository.*;
 import org.b3log.latke.service.ServiceException;
 import org.b3log.latke.service.annotation.Service;
-import org.b3log.latke.servlet.HTTPRequestMethod;
-import org.b3log.latke.urlfetch.*;
 import org.b3log.latke.util.CollectionUtils;
 import org.b3log.latke.util.Paginator;
 import org.b3log.symphony.cache.TagCache;
@@ -43,15 +43,14 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
-import java.net.URL;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Tag query service.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.8.7.0, Feb 22, 2018
+ * @version 1.9.0.4, Oct 7, 2018
  * @since 0.2.0
  */
 @Service
@@ -61,11 +60,6 @@ public class TagQueryService {
      * Logger.
      */
     private static final Logger LOGGER = Logger.getLogger(TagQueryService.class);
-
-    /**
-     * URL fetch service.
-     */
-    private final URLFetchService urlFetchService = URLFetchServiceFactory.getURLFetchService();
 
     /**
      * Tag repository.
@@ -122,6 +116,75 @@ public class TagQueryService {
     private TagCache tagCache;
 
     /**
+     * Builds tag objects with the specified tags string.
+     *
+     * @param tagsStr the specified tags string
+     * @return tag objects
+     */
+    public List<JSONObject> buildTagObjs(final String tagsStr) {
+        final List<JSONObject> ret = new ArrayList<>();
+
+        final String[] tagTitles = tagsStr.split(",");
+        for (final String tagTitle : tagTitles) {
+            final JSONObject tag = new JSONObject();
+            tag.put(Tag.TAG_TITLE, tagTitle);
+
+            final String uri = tagRepository.getURIByTitle(tagTitle);
+            if (null != uri) {
+                tag.put(Tag.TAG_URI, uri);
+            } else {
+                tag.put(Tag.TAG_URI, tagTitle);
+            }
+
+            Tag.fillDescription(tag);
+
+            ret.add(tag);
+        }
+
+        return ret;
+    }
+
+    /**
+     * Gets domains of the specified tag belongs to.
+     *
+     * @param tagTitle the specified tag title
+     * @return domains, returns an empty list if not found
+     */
+    public List<JSONObject> getDomains(final String tagTitle) {
+        final List<JSONObject> ret = new ArrayList<>();
+
+        try {
+            final JSONObject tag = tagRepository.getByTitle(tagTitle);
+            if (null == tag) {
+                return ret;
+            }
+
+            final String tagId = tag.optString(Keys.OBJECT_ID);
+            final JSONArray relations = domainTagRepository.getByTagId(tagId, 1, Integer.MAX_VALUE).optJSONArray(Keys.RESULTS);
+            if (1 > relations.length()) {
+                return ret;
+            }
+
+            final List<String> domainIds = new ArrayList<>();
+            for (int i = 0; i < relations.length(); i++) {
+                final JSONObject relation = relations.optJSONObject(i);
+                final String domainId = relation.optString(Domain.DOMAIN + "_" + Keys.OBJECT_ID);
+                domainIds.add(domainId);
+            }
+
+            Collections.sort(domainIds);
+            for (final String domainId : domainIds) {
+                final JSONObject domain = domainRepository.get(domainId);
+                ret.add(domain);
+            }
+        } catch (final Exception e) {
+            LOGGER.log(Level.ERROR, "Gets domains of tag [title=" + tagTitle + "] failed", e);
+        }
+
+        return ret;
+    }
+
+    /**
      * Gets tags by the specified title prefix.
      *
      * @param titlePrefix the specified title prefix
@@ -175,7 +238,11 @@ public class TagQueryService {
             end++;
         }
 
-        final List<JSONObject> subList = tags.subList(start, end);
+        List<JSONObject> subList = tags.subList(start, end);
+        if (64 <= tags.size()) {
+            // 标签自动完成进行过滤 https://github.com/b3log/symphony/issues/778
+            subList = subList.stream().filter(tag -> tag.optInt(Tag.TAG_REFERENCE_CNT) > 3).collect(Collectors.toList());
+        }
         Collections.sort(subList, (t1, t2) -> t2.optInt(Tag.TAG_REFERENCE_CNT) - t1.optInt(Tag.TAG_REFERENCE_CNT));
 
         return subList.subList(0, subList.size() > fetchSize ? fetchSize : subList.size());
@@ -196,32 +263,27 @@ public class TagQueryService {
             return ret;
         }
 
-        final HTTPRequest request = new HTTPRequest();
         try {
-            request.setURL(new URL("http://api.bosonnlp.com/keywords/analysis?top_k=" + tagFetchSize));
-            request.setRequestMethod(HTTPRequestMethod.POST);
-
-            request.addHeader(new HTTPHeader("Content-Type", "application/json"));
-            request.addHeader(new HTTPHeader("Accept", "application/json"));
-            request.addHeader(new HTTPHeader("X-Token", token));
-            request.setPayload(("\"" + content + "\"").getBytes("UTF-8"));
-
-            final HTTPResponse response = urlFetchService.fetch(request);
-            final String str = new String(response.getContent(), "UTF-8");
-
+            final HttpResponse response = HttpRequest.post("http://api.bosonnlp.com/keywords/analysis?top_k=" + tagFetchSize).
+                    header("Content-Type", "application/json").
+                    header("Accept", "application/json").
+                    header("X-Token", token).bodyText("\"" + content + "\"").timeout(5000).send();
+            response.charset("UTF-8");
+            final String str = response.bodyText();
             try {
                 final JSONArray data = new JSONArray(str);
-
                 for (int i = 0; i < data.length(); i++) {
-                    final JSONArray key = data.getJSONArray(i);
-                    ret.add(key.optString(1));
+                    final String tag = data.getJSONArray(i).optString(1);
+                    if (!StringUtils.isAlphanumericSpace(tag)) {
+                        ret.add(tag);
+                    }
                 }
             } catch (final JSONException e) {
                 final JSONObject data = new JSONObject(str);
 
                 LOGGER.log(Level.ERROR, "Boson process failed [" + data.toString(4) + "]");
             }
-        } catch (final IOException | JSONException e) {
+        } catch (final Exception e) {
             LOGGER.log(Level.ERROR, "Generates tags error: " + content, e);
         }
 
@@ -244,24 +306,14 @@ public class TagQueryService {
      * @return invalid tags, returns an empty list if not found
      */
     public List<String> getInvalidTags() {
-        final List<String> ret = new ArrayList<>();
-
-        final Query query = new Query().setFilter(
-                new PropertyFilter(Tag.TAG_STATUS, FilterOperator.NOT_EQUAL, Tag.TAG_STATUS_C_VALID));
-
         try {
-            final JSONArray records = tagRepository.get(query).optJSONArray(Keys.RESULTS);
-
-            for (int i = 0; i < records.length(); i++) {
-                final String title = records.optJSONObject(i).optString(Tag.TAG_TITLE);
-
-                ret.add(title);
-            }
+            return tagRepository.getList(new Query().setFilter(new PropertyFilter(Tag.TAG_STATUS, FilterOperator.NOT_EQUAL, Tag.TAG_STATUS_C_VALID))).
+                    stream().map(record -> record.optString(Tag.TAG_TITLE)).collect(Collectors.toList());
         } catch (final RepositoryException e) {
             LOGGER.log(Level.ERROR, "Gets invalid tags error", e);
-        }
 
-        return ret;
+            return Collections.emptyList();
+        }
     }
 
     /**
@@ -296,22 +348,13 @@ public class TagQueryService {
                 ret.put(Tag.TAG_SEO_KEYWORDS, tagURI);
             }
 
-            final List<JSONObject> domains = new ArrayList<>();
+            final String tagTitle = ret.optString(Tag.TAG_TITLE);
+            final List<JSONObject> domains = getDomains(tagTitle);
             ret.put(Tag.TAG_T_DOMAINS, (Object) domains);
-
-            final Query query = new Query().setFilter(
-                    new PropertyFilter(Tag.TAG + "_" + Keys.OBJECT_ID, FilterOperator.EQUAL, ret.optString(Keys.OBJECT_ID)));
-            final JSONArray relations = domainTagRepository.get(query).optJSONArray(Keys.RESULTS);
-            for (int i = 0; i < relations.length(); i++) {
-                final JSONObject relation = relations.optJSONObject(i);
-                final String domainId = relation.optString(Domain.DOMAIN + "_" + Keys.OBJECT_ID);
-                final JSONObject domain = domainRepository.get(domainId);
-                domains.add(domain);
-            }
 
             return ret;
         } catch (final RepositoryException e) {
-            LOGGER.log(Level.ERROR, "Gets tag [title=" + tagURI + "] failed", e);
+            LOGGER.log(Level.ERROR, "Gets tag [uri=" + tagURI + "] failed", e);
             throw new ServiceException(e);
         }
     }
@@ -348,18 +391,8 @@ public class TagQueryService {
                 ret.put(Tag.TAG_SEO_KEYWORDS, tagTitle);
             }
 
-            final List<JSONObject> domains = new ArrayList<>();
+            final List<JSONObject> domains = getDomains(tagTitle);
             ret.put(Tag.TAG_T_DOMAINS, (Object) domains);
-
-            final Query query = new Query().setFilter(
-                    new PropertyFilter(Tag.TAG + "_" + Keys.OBJECT_ID, FilterOperator.EQUAL, ret.optString(Keys.OBJECT_ID)));
-            final JSONArray relations = domainTagRepository.get(query).optJSONArray(Keys.RESULTS);
-            for (int i = 0; i < relations.length(); i++) {
-                final JSONObject relation = relations.optJSONObject(i);
-                final String domainId = relation.optString(Domain.DOMAIN + "_" + Keys.OBJECT_ID);
-                final JSONObject domain = domainRepository.get(domainId);
-                domains.add(domain);
-            }
 
             return ret;
         } catch (final RepositoryException e) {
@@ -398,9 +431,8 @@ public class TagQueryService {
      * Gets the new (sort by oId descending) tags.
      *
      * @return trend tags, returns an empty list if not found
-     * @throws ServiceException service exception
      */
-    public List<JSONObject> getNewTags() throws ServiceException {
+    public List<JSONObject> getNewTags() {
         return tagCache.getNewTags();
     }
 
@@ -435,9 +467,8 @@ public class TagQueryService {
      *
      * @param fetchSize the specified fetch size
      * @return tags, returns an empty list if not found
-     * @throws ServiceException service exception
      */
-    public List<JSONObject> getTags(final int fetchSize) throws ServiceException {
+    public List<JSONObject> getTags(final int fetchSize) {
         return tagCache.getIconTags(fetchSize);
     }
 
@@ -477,8 +508,6 @@ public class TagQueryService {
             final JSONObject creatorTagRelation = results.optJSONObject(0);
             if (null == creatorTagRelation) {
                 LOGGER.log(Level.WARN, "Can't find tag [id=" + tagId + "]'s creator, uses anonymous user instead");
-                ret.put(Tag.TAG_T_CREATOR_THUMBNAIL_URL, avatarQueryService.getDefaultAvatarURL("48"));
-                ret.put(Tag.TAG_T_CREATOR_THUMBNAIL_UPDATE_TIME, 0L);
                 ret.put(Tag.TAG_T_CREATOR_NAME, UserExt.ANONYMOUS_USER_NAME);
 
                 return ret;
@@ -486,8 +515,6 @@ public class TagQueryService {
 
             final String creatorId = creatorTagRelation.optString(User.USER + '_' + Keys.OBJECT_ID);
             if (UserExt.ANONYMOUS_USER_ID.equals(creatorId)) {
-                ret.put(Tag.TAG_T_CREATOR_THUMBNAIL_URL, avatarQueryService.getDefaultAvatarURL("48"));
-                ret.put(Tag.TAG_T_CREATOR_THUMBNAIL_UPDATE_TIME, 0L);
                 ret.put(Tag.TAG_T_CREATOR_NAME, UserExt.ANONYMOUS_USER_NAME);
 
                 return ret;
@@ -496,9 +523,7 @@ public class TagQueryService {
             final JSONObject creator = userRepository.get(creatorId);
 
             final String thumbnailURL = avatarQueryService.getAvatarURLByUser(avatarViewMode, creator, "48");
-
             ret.put(Tag.TAG_T_CREATOR_THUMBNAIL_URL, thumbnailURL);
-            ret.put(Tag.TAG_T_CREATOR_THUMBNAIL_UPDATE_TIME, creator.optLong(UserExt.USER_UPDATE_TIME));
             ret.put(Tag.TAG_T_CREATOR_NAME, creator.optString(User.USER_NAME));
 
             return ret;
@@ -548,7 +573,7 @@ public class TagQueryService {
             query = new Query().setFilter(new PropertyFilter(Keys.OBJECT_ID, FilterOperator.IN, userIds));
             result = userRepository.get(query);
 
-            final List<JSONObject> users = CollectionUtils.<JSONObject>jsonArrayToList(result.optJSONArray(Keys.RESULTS));
+            final List<JSONObject> users = CollectionUtils.jsonArrayToList(result.optJSONArray(Keys.RESULTS));
             for (final JSONObject user : users) {
                 final JSONObject participant = new JSONObject();
 
@@ -694,7 +719,7 @@ public class TagQueryService {
         pagination.put(Pagination.PAGINATION_PAGE_NUMS, pageNums);
 
         final JSONArray data = result.optJSONArray(Keys.RESULTS);
-        final List<JSONObject> tags = CollectionUtils.<JSONObject>jsonArrayToList(data);
+        final List<JSONObject> tags = CollectionUtils.jsonArrayToList(data);
 
         for (final JSONObject tag : tags) {
             tag.put(Tag.TAG_T_CREATE_TIME, new Date(tag.optLong(Keys.OBJECT_ID)));

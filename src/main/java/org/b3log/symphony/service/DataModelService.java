@@ -17,22 +17,21 @@
  */
 package org.b3log.symphony.service;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.RandomUtils;
 import org.b3log.latke.Keys;
 import org.b3log.latke.Latkes;
-import org.b3log.latke.ioc.inject.Inject;
-import org.b3log.latke.logging.Level;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.User;
 import org.b3log.latke.service.LangPropsService;
-import org.b3log.latke.service.ServiceException;
 import org.b3log.latke.service.annotation.Service;
 import org.b3log.latke.util.Locales;
 import org.b3log.latke.util.Stopwatchs;
 import org.b3log.symphony.SymphonyServletListener;
 import org.b3log.symphony.cache.DomainCache;
 import org.b3log.symphony.model.*;
-import org.b3log.symphony.util.Sessions;
+import org.b3log.symphony.util.Markdowns;
 import org.b3log.symphony.util.Symphonys;
 import org.json.JSONObject;
 
@@ -44,7 +43,7 @@ import java.util.*;
  * Data model service.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.12.2.34, Apr 3, 2018
+ * @version 1.12.2.36, Oct 29, 2018
  * @since 0.2.0
  */
 @Service
@@ -135,8 +134,7 @@ public class DataModelService {
      * @param article        the specified article
      * @throws Exception exception
      */
-    public void fillRelevantArticles(final int avatarViewMode,
-                                     final Map<String, Object> dataModel, final JSONObject article) throws Exception {
+    public void fillRelevantArticles(final int avatarViewMode, final Map<String, Object> dataModel, final JSONObject article) {
         final int articleStatus = article.optInt(Article.ARTICLE_STATUS);
         if (Article.ARTICLE_STATUS_C_INVALID == articleStatus) {
             dataModel.put(Common.SIDE_RELEVANT_ARTICLES, Collections.emptyList());
@@ -147,8 +145,7 @@ public class DataModelService {
         Stopwatchs.start("Fills relevant articles");
         try {
             dataModel.put(Common.SIDE_RELEVANT_ARTICLES,
-                    articleQueryService.getRelevantArticles(
-                            avatarViewMode, article, Symphonys.getInt("sideRelevantArticlesCnt")));
+                    articleQueryService.getRelevantArticles(avatarViewMode, article, Symphonys.getInt("sideRelevantArticlesCnt")));
         } finally {
             Stopwatchs.end();
         }
@@ -158,13 +155,12 @@ public class DataModelService {
      * Fills the latest comments.
      *
      * @param dataModel the specified data model
-     * @throws Exception exception
      */
-    public void fillLatestCmts(final Map<String, Object> dataModel) throws Exception {
+    public void fillLatestCmts(final Map<String, Object> dataModel) {
         Stopwatchs.start("Fills latest comments");
         try {
             // dataModel.put(Common.SIDE_LATEST_CMTS, commentQueryService.getLatestComments(Symphonys.getInt("sizeLatestCmtsCnt")));
-            dataModel.put(Common.SIDE_LATEST_CMTS, (Object) Collections.emptyList());
+            dataModel.put(Common.SIDE_LATEST_CMTS, Collections.emptyList());
         } finally {
             Stopwatchs.end();
         }
@@ -202,9 +198,8 @@ public class DataModelService {
      * Fills tags.
      *
      * @param dataModel the specified data model
-     * @throws Exception exception
      */
-    public void fillSideTags(final Map<String, Object> dataModel) throws Exception {
+    public void fillSideTags(final Map<String, Object> dataModel) {
         Stopwatchs.start("Fills side tags");
         try {
             dataModel.put(Common.SIDE_TAGS, tagQueryService.getTags(Symphonys.getInt("sideTagsCnt")));
@@ -221,9 +216,8 @@ public class DataModelService {
      * Fills index tags.
      *
      * @param dataModel the specified data model
-     * @throws Exception exception
      */
-    public void fillIndexTags(final Map<String, Object> dataModel) throws Exception {
+    public void fillIndexTags(final Map<String, Object> dataModel) {
         Stopwatchs.start("Fills index tags");
         try {
             for (int i = 0; i < 13; i++) {
@@ -252,10 +246,9 @@ public class DataModelService {
      * @param request   the specified request
      * @param response  the specified response
      * @param dataModel the specified data model
-     * @throws Exception exception
      */
     private void fillHeader(final HttpServletRequest request, final HttpServletResponse response,
-                            final Map<String, Object> dataModel) throws Exception {
+                            final Map<String, Object> dataModel) {
         fillMinified(dataModel);
         dataModel.put(Common.STATIC_RESOURCE_VERSION, Latkes.getStaticResourceVersion());
         dataModel.put("esEnabled", Symphonys.getBoolean("es.enabled"));
@@ -293,18 +286,18 @@ public class DataModelService {
      * Fills footer.
      *
      * @param dataModel the specified data model
-     * @throws Exception exception
      */
-    private void fillFooter(final Map<String, Object> dataModel) throws Exception {
+    private void fillFooter(final Map<String, Object> dataModel) {
         fillSysInfo(dataModel);
 
         dataModel.put(Common.YEAR, String.valueOf(Calendar.getInstance().get(Calendar.YEAR)));
-        dataModel.put(Common.SITE_VISIT_STAT_CODE, Symphonys.get("siteVisitStatCode"));
+        dataModel.put(Common.SITE_VISIT_STAT_CODE, Symphonys.get(Common.SITE_VISIT_STAT_CODE));
         dataModel.put(Common.MOUSE_EFFECTS, RandomUtils.nextDouble() > 0.95);
         dataModel.put(Common.MACRO_HEAD_PC_CODE, Symphonys.get(Common.MACRO_HEAD_PC_CODE));
         dataModel.put(Common.MACRO_HEAD_MOBILE_CODE, Symphonys.get(Common.MACRO_HEAD_MOBILE_CODE));
         dataModel.put(Common.FOOTER_PC_CODE, Symphonys.get(Common.FOOTER_PC_CODE));
         dataModel.put(Common.FOOTER_MOBILE_CODE, Symphonys.get(Common.FOOTER_MOBILE_CODE));
+        dataModel.put(Common.FOOTER_BEI_AN_HAO, Symphonys.get(Common.FOOTER_BEI_AN_HAO));
     }
 
     /**
@@ -313,10 +306,8 @@ public class DataModelService {
      * @param request   the specified request
      * @param response  the specified response
      * @param dataModel the specified data model
-     * @throws Exception exception
      */
-    public void fillHeaderAndFooter(final HttpServletRequest request, final HttpServletResponse response,
-                                    final Map<String, Object> dataModel) throws Exception {
+    public void fillHeaderAndFooter(final HttpServletRequest request, final HttpServletResponse response, final Map<String, Object> dataModel) {
         Stopwatchs.start("Fills header");
         try {
             final boolean isMobile = (Boolean) request.getAttribute(Common.IS_MOBILE);
@@ -334,7 +325,9 @@ public class DataModelService {
             Stopwatchs.end();
         }
 
-        dataModel.put(Common.WEBSOCKET_SCHEME, Symphonys.get("websocket.scheme"));
+        final String serverScheme = Latkes.getServerScheme();
+        dataModel.put(Common.WEBSOCKET_SCHEME, StringUtils.containsIgnoreCase(serverScheme, "https") ? "wss" : "ws");
+        dataModel.put(Common.MARKED_AVAILABLE, Markdowns.MARKED_AVAILABLE);
     }
 
     /**
@@ -344,27 +337,13 @@ public class DataModelService {
      * @param response  the specified response
      * @param dataModel the specified data model
      */
-    private void fillPersonalNav(final HttpServletRequest request, final HttpServletResponse response,
-                                 final Map<String, Object> dataModel) {
+    private void fillPersonalNav(final HttpServletRequest request, final HttpServletResponse response, final Map<String, Object> dataModel) {
         Stopwatchs.start("Fills personal nav");
         try {
             dataModel.put(Common.IS_LOGGED_IN, false);
             dataModel.put(Common.IS_ADMIN_LOGGED_IN, false);
 
-            if (null == Sessions.currentUser(request) && !userMgmtService.tryLogInWithCookie(request, response)) {
-                dataModel.put("loginLabel", langPropsService.get("loginLabel"));
-
-                return;
-            }
-
-            JSONObject curUser = null;
-
-            try {
-                curUser = userQueryService.getCurrentUser(request);
-            } catch (final ServiceException e) {
-                LOGGER.log(Level.ERROR, "Gets the current user failed", e);
-            }
-
+            final JSONObject curUser = (JSONObject) request.getAttribute(Common.CURRENT_USER);
             if (null == curUser) {
                 dataModel.put("loginLabel", langPropsService.get("loginLabel"));
 
@@ -373,7 +352,6 @@ public class DataModelService {
 
             dataModel.put(Common.IS_LOGGED_IN, true);
             dataModel.put(Common.LOGOUT_URL, userQueryService.getLogoutURL("/"));
-
             dataModel.put("logoutLabel", langPropsService.get("logoutLabel"));
 
             final String userRole = curUser.optString(User.USER_ROLE);
@@ -511,9 +489,8 @@ public class DataModelService {
      * Fills trend tags.
      *
      * @param dataModel the specified data model
-     * @throws Exception exception
      */
-    private void fillTrendTags(final Map<String, Object> dataModel) throws Exception {
+    private void fillTrendTags(final Map<String, Object> dataModel) {
         Stopwatchs.start("Fills trend tags");
         try {
             // dataModel.put(Common.NAV_TREND_TAGS, tagQueryService.getTrendTags(Symphonys.getInt("trendTagsCnt")));
@@ -527,9 +504,8 @@ public class DataModelService {
      * Fils new tags.
      *
      * @param dataModel the specified data model
-     * @throws Exception exception
      */
-    private void fillNewTags(final Map<String, Object> dataModel) throws Exception {
+    private void fillNewTags(final Map<String, Object> dataModel) {
         dataModel.put(Common.NEW_TAGS, tagQueryService.getNewTags());
     }
 
@@ -537,9 +513,8 @@ public class DataModelService {
      * Fills system info.
      *
      * @param dataModel the specified data model
-     * @throws Exception exception
      */
-    private void fillSysInfo(final Map<String, Object> dataModel) throws Exception {
+    private void fillSysInfo(final Map<String, Object> dataModel) {
         dataModel.put(Common.VERSION, SymphonyServletListener.VERSION);
     }
 }

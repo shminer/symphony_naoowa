@@ -19,7 +19,7 @@ package org.b3log.symphony.service;
 
 import org.b3log.latke.Keys;
 import org.b3log.latke.Latkes;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.User;
@@ -203,11 +203,11 @@ public class MailMgmtService {
                 }
             }
 
-            dataModel.put(Article.ARTICLES, (Object) articles);
+            dataModel.put(Article.ARTICLES, articles);
 
             // select nice users
             final List<JSONObject> users = userQueryService.getNiceUsers(6);
-            dataModel.put(User.USERS, (Object) users);
+            dataModel.put(User.USERS, users);
 
             final String fromName = langPropsService.get("symphonyEnLabel") + " "
                     + langPropsService.get("weeklyEmailFromNameLabel", Latkes.getLocale());

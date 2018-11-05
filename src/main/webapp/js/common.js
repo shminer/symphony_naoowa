@@ -21,7 +21,7 @@
  * @author <a href="http://vanessa.b3log.org">Liyuan Li</a>
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
  * @author <a href="http://zephyr.b3log.org">Zephyr</a>
- * @version 1.44.3.1, Jul 22, 2018
+ * @version 1.45.0.0, Oct 20, 2018
  */
 
 /**
@@ -30,12 +30,13 @@
  */
 var Util = {
   /**
-   * 按需加载 MathJax 及 flow
+   * 按需加载 MathJax 及 flow、live photo
    * @returns {undefined}
    */
   parseMarkdown: function () {
     var hasMathJax = false;
     var hasFlow = false;
+    var hasLivePhoto = false;
     $('.content-reset').each(function () {
       $(this).find('p').each(function () {
         if ($(this).text().split('$').length > 2 ||
@@ -47,6 +48,13 @@ var Util = {
       if ($(this).find('code.lang-flow, code.language-flow').length > 0) {
         hasFlow = true
       }
+
+      $(this).find('a').each(function () {
+        var href = $(this).attr('href')
+        if (href && href.substr(href.length - 4).toLowerCase() === '.mov') {
+          hasLivePhoto = true
+        }
+      })
     });
 
     if (hasMathJax) {
@@ -100,6 +108,36 @@ var Util = {
         }).done(function () {
           initFlow()
         });
+      }
+    }
+    if (hasLivePhoto) {
+      var initLivePhoto = function () {
+        $('.content-reset').each(function () {
+          $(this).find('a').each(function () {
+            var $it = $(this)
+            var href = $(this).attr('href')
+            if (href && href.substr(href.length - 4).toLowerCase() === '.mov') {
+              this.style.height = '360px'
+              this.style.width = '270px'
+              $it.removeAttr('href')
+              var player = LivePhotosKit.Player(this);
+              player.photoSrc =  Label.staticServePath + '/images/livephoto.png';
+              player.videoSrc = href;
+            }
+          })
+        })
+      }
+      if (typeof (LivePhotosKit) !== 'undefined') {
+        initLivePhoto()
+      } else {
+        $.ajax({
+          method: 'GET',
+          url: Label.staticServePath + '/js/lib/livephotoskit.js',
+          dataType: 'script',
+          cache: true,
+        }).done(function () {
+          initLivePhoto()
+        })
       }
     }
   },
@@ -171,7 +209,7 @@ var Util = {
    */
   makeNotificationRead: function (type, it) {
     $.ajax({
-      url: Label.servePath + "/notification/read/" + type,
+      url: Label.servePath + "/notifications/read/" + type,
       type: "GET",
       cache: false,
       success: function (result, textStatus) {
@@ -286,7 +324,7 @@ var Util = {
       return false;
     }).bind('keyup', 'Shift+/', function (event) {
       // shift/⇧ ? 新窗口打开键盘快捷键说明文档
-      window.open('https://naoowa.cn/article/1532935570253');
+      window.open('https://hacpai.com/article/1474030007391');
       return false;
     }).bind('keyup', 'j', function (event) {
       // j 移动到下一项
@@ -414,84 +452,6 @@ var Util = {
 
     // At last, if the user already denied any notification, and you
     // want to be respectful there is no need to bother them any more.
-  },
-  /**
-   * 链接熔炉
-   * @returns {undefined}
-   */
-  linkForge: function () {
-    $('.link-forge .module-header > a').click(function () {
-      var $panel = $(this).closest('.module').find('.module-panel');
-      if ($panel.css('overflow') !== 'hidden') {
-        $panel.css({
-          'max-height': '409px',
-          'overflow': 'hidden'
-        });
-        return false;
-      }
-      $panel.css({
-        'max-height': 'inherit',
-        'overflow': 'inherit'
-      });
-    });
-
-    var postLink = function () {
-      if (!Label.isLoggedIn) {
-        Util.needLogin();
-        return false;
-      }
-      if (Validate.goValidate({
-          target: $('#uploadLinkTip'),
-          data: [{
-            "target": $('.link-forge-upload input'),
-            "type": "url",
-            "msg": Label.invalidUserURLLabel
-          }]
-        })) {
-        $.ajax({
-          url: Label.servePath + "/forge/link",
-          type: "POST",
-          cache: false,
-          data: JSON.stringify({
-            url: $('.link-forge-upload input').val()
-          }),
-          error: function (jqXHR, textStatus, errorThrown) {
-            alert(errorThrown);
-          },
-          success: function (result, textStatus) {
-            if (result.sc) {
-              $('#uploadLinkTip').html('<ul><li>' + Label.forgeUploadSuccLabel + '</li></ul>').addClass('succ');
-              $('.link-forge-upload input').val('');
-              setTimeout(function () {
-                $('#uploadLinkTip').html('').removeClass('succ');
-              }, 5000);
-            } else {
-              alert(result.msg);
-            }
-          }
-        });
-      }
-    };
-
-    $('.link-forge-upload button').click(function () {
-      postLink();
-    });
-
-    $('.link-forge-upload input').focus().keypress(function (event) {
-      if (event.which === 13) {
-        postLink();
-        return false;
-      }
-
-      Validate.goValidate({
-        target: $('#uploadLinkTip'),
-        data: [{
-          "target": $('.link-forge-upload input'),
-          "type": "url",
-          "msg": Label.invalidUserURLLabel
-        }]
-      });
-    });
   },
   /**
    * 粘贴中包含图片和文案时，需要处理为 markdown 语法
@@ -833,7 +793,7 @@ var Util = {
                 CodeMirror.Pos(cursor.line, cursor.ch - Label.uploadingLabel.length), cursor);
             },
             error: function (XMLHttpRequest, textStatus, errorThrown) {
-              alert("Error: " + errorThrown);
+              Util.alert("Error: " + errorThrown);
               var cursor = cm.getCursor();
               cm.replaceRange('', CodeMirror.Pos(cursor.line, cursor.ch - Label.uploadingLabel.length), cursor);
             }
@@ -856,7 +816,7 @@ var Util = {
                 CodeMirror.Pos(cursor.line, cursor.ch - Label.uploadingLabel.length), cursor);
             },
             error: function (XMLHttpRequest, textStatus, errorThrown) {
-              alert("Error: " + errorThrown);
+              Util.alert("Error: " + errorThrown);
               var cursor = cm.getCursor();
               cm.replaceRange('', CodeMirror.Pos(cursor.line, cursor.ch - Label.uploadingLabel.length), cursor);
             }
@@ -874,7 +834,7 @@ var Util = {
    */
   setUnreadNotificationCount: function (isSendMsg) {
     $.ajax({
-      url: Label.servePath + "/notification/unread/count",
+      url: Label.servePath + "/notifications/unread/count",
       type: "GET",
       cache: false,
       success: function (result, textStatus) {
@@ -1402,13 +1362,13 @@ var Util = {
               isImg = isImage(fileBuf);
 
               if (isImg && evt.target.result.byteLength > obj.imgMaxSize) {
-                alert("This image is too large (max " + obj.imgMaxSize / 1024 / 1024 + "M)");
+                Util.alert("This image is too large (max " + obj.imgMaxSize / 1024 / 1024 + "M)");
 
                 return;
               }
 
               if (!isImg && evt.target.result.byteLength > obj.fileMaxSize) {
-                alert("This file is too large (max " + obj.fileMaxSize / 1024 / 1024 + "M)");
+                Util.alert("This file is too large (max " + obj.fileMaxSize / 1024 / 1024 + "M)");
 
                 return;
               }
@@ -1434,7 +1394,7 @@ var Util = {
         done: function (e, data) {
           var filename = data.result.name;
           if (data.result.code === 1) {
-            alert(data.result.msg)
+            Util.alert(data.result.msg)
             if (obj.editor.replaceRange) {
               var cursor = obj.editor.getCursor();
               obj.editor.replaceRange('[' + filename + '](Error) \n\n',
@@ -1448,7 +1408,7 @@ var Util = {
 
           var filePath = data.result.key;
           if (!filePath) {
-            alert("Upload error");
+            Util.alert("Upload error");
 
             return;
           }
@@ -1469,7 +1429,7 @@ var Util = {
           fileIndex--;
         },
         fail: function (e, data) {
-          alert("Upload error: " + data.errorThrown);
+          Util.alert("Upload error: " + data.errorThrown);
           if (obj.editor.replaceRange) {
             var cursor = obj.editor.getCursor();
             obj.editor.replaceRange('',
@@ -1482,7 +1442,7 @@ var Util = {
       }).on('fileuploadprocessalways', function (e, data) {
         var currentFile = data.files[data.index];
         if (data.files.error && currentFile.error) {
-          alert(currentFile.error);
+          Util.alert(currentFile.error);
         }
       });
 
@@ -1517,13 +1477,13 @@ var Util = {
             isImg = isImage(fileBuf);
 
             if (isImg && evt.target.result.byteLength > obj.imgMaxSize) {
-              alert("This image is too large (max " + obj.imgMaxSize / 1024 / 1024 + "M)");
+              Util.alert("This image is too large (max " + obj.imgMaxSize / 1024 / 1024 + "M)");
 
               return;
             }
 
             if (!isImg && evt.target.result.byteLength > obj.fileMaxSize) {
-              alert("This file is too large (max " + obj.fileMaxSize / 1024 / 1024 + "M)");
+              Util.alert("This file is too large (max " + obj.fileMaxSize / 1024 / 1024 + "M)");
 
               return;
             }
@@ -1558,7 +1518,7 @@ var Util = {
       done: function (e, data) {
         var qiniuKey = data.result.key;
         if (!qiniuKey) {
-          alert("Upload error");
+          Util.alert("Upload error");
 
           return;
         }
@@ -1586,7 +1546,7 @@ var Util = {
         fileIndex--;
       },
       fail: function (e, data) {
-        alert("Upload error: " + data.errorThrown);
+        Util.alert("Upload error: " + data.errorThrown);
         if (obj.editor.replaceRange) {
           var cursor = obj.editor.getCursor();
           obj.editor.replaceRange('',
@@ -1599,7 +1559,7 @@ var Util = {
     }).on('fileuploadprocessalways', function (e, data) {
       var currentFile = data.files[data.index];
       if (data.files.error && currentFile.error) {
-        alert(currentFile.error);
+        Util.alert(currentFile.error);
       }
     });
   },

@@ -17,35 +17,28 @@
  */
 package org.b3log.symphony.event;
 
+import jodd.http.HttpRequest;
+import jodd.http.HttpResponse;
 import org.b3log.latke.Latkes;
 import org.b3log.latke.event.AbstractEventListener;
 import org.b3log.latke.event.Event;
-import org.b3log.latke.event.EventException;
-import org.b3log.latke.ioc.inject.Named;
-import org.b3log.latke.ioc.inject.Singleton;
+import org.b3log.latke.ioc.Singleton;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
-import org.b3log.latke.servlet.HTTPRequestMethod;
-import org.b3log.latke.urlfetch.HTTPRequest;
-import org.b3log.latke.urlfetch.HTTPResponse;
-import org.b3log.latke.urlfetch.URLFetchService;
-import org.b3log.latke.urlfetch.URLFetchServiceFactory;
+import org.b3log.latke.util.URLs;
 import org.b3log.symphony.model.Article;
 import org.b3log.symphony.util.Symphonys;
-import org.b3log.symphony.util.URLs;
 import org.json.JSONObject;
 
 import javax.servlet.http.HttpServletResponse;
-import java.net.URL;
 
 /**
  * Sends an article to QQ qun via <a href="https://github.com/b3log/xiaov">XiaoV</a>.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.4.0.2, May 29, 2016
+ * @version 1.4.0.3, Aug 2, 2018
  * @since 1.4.0
  */
-@Named
 @Singleton
 public class ArticleQQSender extends AbstractEventListener<JSONObject> {
 
@@ -54,13 +47,8 @@ public class ArticleQQSender extends AbstractEventListener<JSONObject> {
      */
     private static final Logger LOGGER = Logger.getLogger(ArticleQQSender.class);
 
-    /**
-     * URL fetch service.
-     */
-    private static final URLFetchService URL_FETCH_SVC = URLFetchServiceFactory.getURLFetchService();
-
     @Override
-    public void action(final Event<JSONObject> event) throws EventException {
+    public void action(final Event<JSONObject> event) {
         final JSONObject data = event.getData();
         LOGGER.log(Level.TRACE, "Processing an event [type={0}, data={1}]", event.getType(), data);
 
@@ -89,19 +77,10 @@ public class ArticleQQSender extends AbstractEventListener<JSONObject> {
         final String xiaovAPI = Symphonys.get("xiaov.api");
         final String xiaovKey = Symphonys.get("xiaov.key");
 
-        final HTTPRequest request = new HTTPRequest();
-        request.setRequestMethod(HTTPRequestMethod.POST);
-
         try {
-            request.setURL(new URL(xiaovAPI + "/qq"));
-
-            final String body = "key=" + URLs.encode(xiaovKey)
-                    + "&msg=" + URLs.encode(msg)
-                    + "&user=" + URLs.encode("sym");
-            request.setPayload(body.getBytes("UTF-8"));
-
-            final HTTPResponse response = URL_FETCH_SVC.fetch(request);
-            final int sc = response.getResponseCode();
+            final String body = "key=" + URLs.encode(xiaovKey) + "&msg=" + URLs.encode(msg) + "&user=" + URLs.encode("sym");
+            final HttpResponse response = HttpRequest.post(xiaovAPI + "/qq").bodyText(body).timeout(5000).send();
+            final int sc = response.statusCode();
             if (HttpServletResponse.SC_OK != sc) {
                 LOGGER.warn("Sends message to XiaoV status code is [" + sc + "]");
             }

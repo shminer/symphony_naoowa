@@ -17,8 +17,9 @@
  */
 package org.b3log.symphony.service;
 
+import org.apache.commons.lang.StringUtils;
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.Pagination;
@@ -33,6 +34,7 @@ import org.b3log.symphony.util.Emotions;
 import org.b3log.symphony.util.Symphonys;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.owasp.encoder.Encode;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -42,7 +44,7 @@ import java.util.List;
  * Pointtransfer query service.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.21.2.4, Jun 15, 2017
+ * @version 1.21.4.1, Oct 1, 2018
  * @since 1.3.0
  */
 @Service
@@ -286,7 +288,7 @@ public class PointtransferQueryService {
 
                         final String addArticleLink = "<a href=\""
                                 + addArticle.optString(Article.ARTICLE_PERMALINK) + "\">"
-                                + addArticle.optString(Article.ARTICLE_TITLE) + "</a>";
+                                + Encode.forHtml(addArticle.optString(Article.ARTICLE_TITLE)) + "</a>";
                         desTemplate = desTemplate.replace("{article}", addArticleLink);
 
                         break;
@@ -300,7 +302,7 @@ public class PointtransferQueryService {
 
                         final String updateArticleLink = "<a href=\""
                                 + updateArticle.optString(Article.ARTICLE_PERMALINK) + "\">"
-                                + updateArticle.optString(Article.ARTICLE_TITLE) + "</a>";
+                                + Encode.forHtml(updateArticle.optString(Article.ARTICLE_TITLE)) + "</a>";
                         desTemplate = desTemplate.replace("{article}", updateArticleLink);
 
                         break;
@@ -318,7 +320,7 @@ public class PointtransferQueryService {
 
                         final String commentArticleLink = "<a href=\""
                                 + commentArticle.optString(Article.ARTICLE_PERMALINK) + "\">"
-                                + commentArticle.optString(Article.ARTICLE_TITLE) + "</a>";
+                                + Encode.forHtml(commentArticle.optString(Article.ARTICLE_TITLE)) + "</a>";
                         desTemplate = desTemplate.replace("{article}", commentArticleLink);
 
                         if ("3In".equals(typeStr)) {
@@ -343,7 +345,7 @@ public class PointtransferQueryService {
 
                         final String commentArticleLink32 = "<a href=\""
                                 + commentArticle32.optString(Article.ARTICLE_PERMALINK) + "\">"
-                                + commentArticle32.optString(Article.ARTICLE_TITLE) + "</a>";
+                                + Encode.forHtml(commentArticle32.optString(Article.ARTICLE_TITLE)) + "</a>";
                         desTemplate = desTemplate.replace("{article}", commentArticleLink32);
 
                         break;
@@ -357,7 +359,7 @@ public class PointtransferQueryService {
 
                         final String addArticleRewordLink = "<a href=\""
                                 + addArticleReword.optString(Article.ARTICLE_PERMALINK) + "\">"
-                                + addArticleReword.optString(Article.ARTICLE_TITLE) + "</a>";
+                                + Encode.forHtml(addArticleReword.optString(Article.ARTICLE_TITLE)) + "</a>";
                         desTemplate = desTemplate.replace("{article}", addArticleRewordLink);
 
                         break;
@@ -382,7 +384,7 @@ public class PointtransferQueryService {
 
                         final String articleRewardLink = "<a href=\""
                                 + articleReward.optString(Article.ARTICLE_PERMALINK) + "\">"
-                                + articleReward.optString(Article.ARTICLE_TITLE) + "</a>";
+                                + Encode.forHtml(articleReward.optString(Article.ARTICLE_TITLE)) + "</a>";
                         desTemplate = desTemplate.replace("{article}", articleRewardLink);
 
                         break;
@@ -405,7 +407,7 @@ public class PointtransferQueryService {
                         }
                         final String articleLink14 = "<a href=\""
                                 + article14.optString(Article.ARTICLE_PERMALINK) + "\">"
-                                + article14.optString(Article.ARTICLE_TITLE) + "</a>";
+                                + Encode.forHtml(article14.optString(Article.ARTICLE_TITLE)) + "</a>";
                         desTemplate = desTemplate.replace("{article}", articleLink14);
 
                         break;
@@ -430,7 +432,7 @@ public class PointtransferQueryService {
 
                         final String articleLink22 = "<a href=\""
                                 + article22.optString(Article.ARTICLE_PERMALINK) + "\">"
-                                + article22.optString(Article.ARTICLE_TITLE) + "</a>";
+                                + Encode.forHtml(article22.optString(Article.ARTICLE_TITLE)) + "</a>";
                         desTemplate = desTemplate.replace("{article}", articleLink22);
 
                         break;
@@ -482,7 +484,7 @@ public class PointtransferQueryService {
 
                         final String ArticleLink20 = "<a href=\""
                                 + atParticipantsArticle.optString(Article.ARTICLE_PERMALINK) + "\">"
-                                + atParticipantsArticle.optString(Article.ARTICLE_TITLE) + "</a>";
+                                + Encode.forHtml(atParticipantsArticle.optString(Article.ARTICLE_TITLE)) + "</a>";
                         desTemplate = desTemplate.replace("{article}", ArticleLink20);
 
                         break;
@@ -496,7 +498,7 @@ public class PointtransferQueryService {
 
                         final String stickArticleLink = "<a href=\""
                                 + stickArticle.optString(Article.ARTICLE_PERMALINK) + "\">"
-                                + stickArticle.optString(Article.ARTICLE_TITLE) + "</a>";
+                                + Encode.forHtml(stickArticle.optString(Article.ARTICLE_TITLE)) + "</a>";
                         desTemplate = desTemplate.replace("{article}", stickArticleLink);
 
                         break;
@@ -510,11 +512,17 @@ public class PointtransferQueryService {
 
                         final String userLink = UserExt.getUserLink(user9);
                         desTemplate = desTemplate.replace("{user}", userLink);
+                        final String memo = record.optString(Pointtransfer.MEMO);
+                        if (StringUtils.isNotBlank(memo)) {
+                            desTemplate = desTemplate.replace("{memo}", memo);
+                        } else {
+                            desTemplate = desTemplate.replace("{memo}", langPropsService.get("noMemoLabel"));
+                        }
 
                         break;
                     case Pointtransfer.TRANSFER_TYPE_C_ACTIVITY_CHECKIN_STREAK:
-                        desTemplate = desTemplate.replace("{point}",
-                                String.valueOf(Pointtransfer.TRANSFER_SUM_C_ACTIVITY_CHECKINT_STREAK));
+                        desTemplate = desTemplate.replace("{point}", record.optString(Pointtransfer.SUM));
+
                         break;
                     case Pointtransfer.TRANSFER_TYPE_C_CHARGE:
                         final String yuan = dataId.split("-")[0];
@@ -541,7 +549,7 @@ public class PointtransferQueryService {
 
                         final String addArticleBroadcastLink = "<a href=\""
                                 + addArticleBroadcast.optString(Article.ARTICLE_PERMALINK) + "\">"
-                                + addArticleBroadcast.optString(Article.ARTICLE_TITLE) + "</a>";
+                                + Encode.forHtml(addArticleBroadcast.optString(Article.ARTICLE_TITLE)) + "</a>";
                         desTemplate = desTemplate.replace("{article}", addArticleBroadcastLink);
 
                         break;
@@ -555,7 +563,7 @@ public class PointtransferQueryService {
 
                         final String perfectArticleLink = "<a href=\""
                                 + perfectArticle.optString(Article.ARTICLE_PERMALINK) + "\">"
-                                + perfectArticle.optString(Article.ARTICLE_TITLE) + "</a>";
+                                + Encode.forHtml(perfectArticle.optString(Article.ARTICLE_TITLE)) + "</a>";
                         desTemplate = desTemplate.replace("{article}", perfectArticleLink);
 
                         break;
@@ -578,8 +586,14 @@ public class PointtransferQueryService {
                         }
                         final String articleLink34 = "<a href=\""
                                 + article34.optString(Article.ARTICLE_PERMALINK) + "\">"
-                                + article34.optString(Article.ARTICLE_TITLE) + "</a>";
+                                + Encode.forHtml(article34.optString(Article.ARTICLE_TITLE)) + "</a>";
                         desTemplate = desTemplate.replace("{article}", articleLink34);
+
+                        break;
+                    case Pointtransfer.TRANSFER_TYPE_C_CHANGE_USERNAME:
+                        final String oldName = dataId.split("-")[0];
+                        final String newName = dataId.split("-")[1];
+                        desTemplate = desTemplate.replace("{oldName}", oldName).replace("{newName}", newName);
 
                         break;
                     default:

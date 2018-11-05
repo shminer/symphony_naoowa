@@ -23,7 +23,7 @@
     <head>
         <@head title="Markdown ${tutorialLabel} - ${symphonyLabel}" />
         <link rel="canonical" href="${servePath}/guide/markdown">
-        <link rel="stylesheet" href="${staticServePath}/js/lib/highlight.js-9.6.0/styles/github.css">
+        <link rel="stylesheet" href="${staticServePath}/js/lib/highlight/styles/github.css">
     </head>
     <body>
     <#include "../header.ftl">
@@ -46,11 +46,13 @@ ${md}
                 </div>
             </div>
             <#include "../footer.ftl">
-                <script src="${staticServePath}/js/lib/highlight.js-9.6.0/highlight.pack.js"></script>
+            <#if !markedAvailable>
+                <script src="${staticServePath}/js/lib/highlight/highlight.pack.js"></script>
                 <script>
              $('pre code').each(function (i, block) {
                     hljs.highlightBlock(block);
                 });
+             </#if>
         </script>
     </body>
     </html>

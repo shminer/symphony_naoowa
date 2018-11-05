@@ -20,7 +20,7 @@ package org.b3log.symphony.service;
 import org.apache.commons.lang.StringUtils;
 import org.b3log.latke.Keys;
 import org.b3log.latke.Latkes;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.Pagination;
@@ -30,13 +30,13 @@ import org.b3log.latke.service.ServiceException;
 import org.b3log.latke.service.annotation.Service;
 import org.b3log.latke.util.CollectionUtils;
 import org.b3log.latke.util.Paginator;
+import org.b3log.latke.util.Times;
+import org.b3log.latke.util.URLs;
 import org.b3log.symphony.model.*;
 import org.b3log.symphony.repository.FollowRepository;
 import org.b3log.symphony.repository.PointtransferRepository;
 import org.b3log.symphony.repository.UserRepository;
 import org.b3log.symphony.util.Sessions;
-import org.b3log.symphony.util.Times;
-import org.b3log.symphony.util.URLs;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -49,7 +49,7 @@ import java.util.*;
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
  * @author <a href="http://zephyr.b3log.org">Zephyr</a>
- * @version 1.8.7.0, Jan 28, 2018
+ * @version 1.8.7.1, Jal 28, 2018
  * @since 0.2.0
  */
 @Service
@@ -63,7 +63,7 @@ public class UserQueryService {
     /**
      * All usernames.
      */
-    public static final List<JSONObject> USER_NAMES = Collections.synchronizedList(new ArrayList<JSONObject>());
+    public static final List<JSONObject> USER_NAMES = Collections.synchronizedList(new ArrayList<>());
 
     /**
      * User repository.
@@ -284,7 +284,7 @@ public class UserQueryService {
                 addProjection(User.USER_NAME, String.class).
                 addProjection(UserExt.USER_AVATAR_URL, String.class);
         try {
-            final JSONObject result = userRepository.get(query); // XXX: Performance Issue
+            final JSONObject result = userRepository.get(query);
             final JSONArray array = result.optJSONArray(Keys.RESULTS);
             for (int i = 0; i < array.length(); i++) {
                 final JSONObject user = array.optJSONObject(i);
@@ -412,13 +412,12 @@ public class UserQueryService {
     }
 
     /**
-     * Gets the default commenter.
+     * Gets the community bot.
      *
      * @return default commenter
-     * @throws ServiceException service exception
      */
-    public JSONObject getDefaultCommenter() throws ServiceException {
-        final JSONObject ret = getUserByName(UserExt.DEFAULT_CMTER_NAME);
+    public JSONObject getComBot() {
+        final JSONObject ret = getUserByName(UserExt.COM_BOT_NAME);
         ret.remove(UserExt.USER_T_POINT_HEX);
         ret.remove(UserExt.USER_T_POINT_CC);
 
@@ -455,17 +454,13 @@ public class UserQueryService {
     public Set<String> getUserNames(final String text) {
         final Set<String> ret = new HashSet<>();
         int idx = text.indexOf('@');
-
         if (-1 == idx) {
             return ret;
         }
 
         String copy = text.trim();
         copy = copy.replaceAll("\\n", " ");
-        //(?=\\pP)匹配标点符号-http://www.cnblogs.com/qixuejia/p/4211428.html
-        copy = copy.replaceAll("(?=\\pP)[^@]", " ");
         String[] uNames = StringUtils.substringsBetween(copy, "@", " ");
-
         String tail = StringUtils.substringAfterLast(copy, "@");
         if (tail.contains(" ")) {
             tail = null;
@@ -482,7 +477,6 @@ public class UserQueryService {
         }
 
         String[] uNames2 = StringUtils.substringsBetween(copy, "@", "<");
-
         final Set<String> maybeUserNameSet;
         if (null == uNames) {
             uNames = uNames2;
@@ -659,10 +653,11 @@ public class UserQueryService {
                 .setCurrentPageNum(currentPageNum).setPageSize(pageSize)
                 .setFilter(CompositeFilterOperator.and(
                         new PropertyFilter(UserExt.USER_CITY, FilterOperator.EQUAL, city),
+                        new PropertyFilter(UserExt.USER_GEO_STATUS, FilterOperator.EQUAL, UserExt.USER_GEO_STATUS_C_PUBLIC),
                         new PropertyFilter(UserExt.USER_STATUS, FilterOperator.EQUAL, UserExt.USER_STATUS_C_VALID),
                         new PropertyFilter(UserExt.USER_LATEST_LOGIN_TIME, FilterOperator.GREATER_THAN_OR_EQUAL, latestTime)
                 ));
-        JSONObject result = null;
+        JSONObject result;
         try {
             result = userRepository.get(query);
         } catch (final RepositoryException e) {

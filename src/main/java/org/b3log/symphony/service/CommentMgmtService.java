@@ -20,9 +20,8 @@ package org.b3log.symphony.service;
 import org.apache.commons.lang.StringUtils;
 import org.b3log.latke.Keys;
 import org.b3log.latke.event.Event;
-import org.b3log.latke.event.EventException;
 import org.b3log.latke.event.EventManager;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.User;
@@ -48,7 +47,7 @@ import java.util.Locale;
  * Comment management service.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 2.14.0.2, Jul 16, 2018
+ * @version 2.15.0.0, Aug 28, 2018
  * @since 0.2.0
  */
 @Service
@@ -176,7 +175,7 @@ public class CommentMgmtService {
             final int offerPoint = article.optInt(Article.ARTICLE_QNA_OFFER_POINT);
             if (Comment.COMMENT_ANONYMOUS_C_PUBLIC == comment.optInt(Comment.COMMENT_ANONYMOUS)) {
                 final boolean succ = null != pointtransferMgmtService.transfer(articleAuthorId, commentAuthorId,
-                        Pointtransfer.TRANSFER_TYPE_C_QNA_OFFER, offerPoint, rewardId, System.currentTimeMillis());
+                        Pointtransfer.TRANSFER_TYPE_C_QNA_OFFER, offerPoint, rewardId, System.currentTimeMillis(), "");
                 if (!succ) {
                     throw new ServiceException(langPropsService.get("transferFailLabel"));
                 }
@@ -242,12 +241,16 @@ public class CommentMgmtService {
         final int ups = comment.optInt(Comment.COMMENT_GOOD_CNT);
         final int downs = comment.optInt(Comment.COMMENT_BAD_CNT);
         if (ups > 0 || downs > 0) {
-            throw new ServiceException("removeCommentFoundWatchEtcLabel");
+            throw new ServiceException(langPropsService.get("removeCommentFoundWatchEtcLabel"));
         }
 
         final int thankCnt = (int) rewardQueryService.rewardedCount(commentId, Reward.TYPE_C_COMMENT);
         if (thankCnt > 0) {
-            throw new ServiceException("removeCommentFoundThankLabel");
+            throw new ServiceException(langPropsService.get("removeCommentFoundThankLabel"));
+        }
+
+        if (Comment.COMMENT_QNA_OFFERED_C_YES == comment.optInt(Comment.COMMENT_QNA_OFFERED)) {
+            throw new ServiceException(langPropsService.get("removeCommentFoundOfferedLabel"));
         }
 
         // Perform removal
@@ -321,7 +324,7 @@ public class CommentMgmtService {
 
             if (Comment.COMMENT_ANONYMOUS_C_PUBLIC == comment.optInt(Comment.COMMENT_ANONYMOUS)) {
                 final boolean succ = null != pointtransferMgmtService.transfer(senderId, receiverId,
-                        Pointtransfer.TRANSFER_TYPE_C_COMMENT_REWARD, rewardPoint, rewardId, System.currentTimeMillis());
+                        Pointtransfer.TRANSFER_TYPE_C_COMMENT_REWARD, rewardPoint, rewardId, System.currentTimeMillis(), "");
 
                 if (!succ) {
                     throw new ServiceException(langPropsService.get("transferFailLabel"));
@@ -358,7 +361,6 @@ public class CommentMgmtService {
      *                          "commentAuthorId": "",
      *                          "commentOnArticleId": "",
      *                          "commentOriginalCommentId": "", // optional
-     *                          "clientCommentId": "" // optional,
      *                          "commentAuthorName": "" // If from client
      *                          "commentIP": "", // optional, default to ""
      *                          "commentUA": "", // optional, default to ""
@@ -387,7 +389,10 @@ public class CommentMgmtService {
             throw new ServiceException(langPropsService.get("systemErrLabel"));
         }
 
-        final boolean fromClient = requestJSONObject.has(Comment.COMMENT_CLIENT_COMMENT_ID);
+        if (UserExt.USER_STATUS_C_VALID != commenter.optInt(UserExt.USER_STATUS)) {
+            throw new ServiceException(langPropsService.get("userStatusInvalidLabel"));
+        }
+
         final String articleId = requestJSONObject.optString(Comment.COMMENT_ON_ARTICLE_ID);
         final String ip = requestJSONObject.optString(Comment.COMMENT_IP);
         String ua = requestJSONObject.optString(Comment.COMMENT_UA);
@@ -397,7 +402,7 @@ public class CommentMgmtService {
 
         if (currentTimeMillis - commenter.optLong(UserExt.USER_LATEST_CMT_TIME) < Symphonys.getLong("minStepCmtTime")
                 && !Role.ROLE_ID_C_ADMIN.equals(commenter.optString(User.USER_ROLE))
-                && !UserExt.DEFAULT_CMTER_ROLE.equals(commenter.optString(User.USER_ROLE))) {
+                && !UserExt.COM_BOT_NAME.equals(commenter.optString(User.USER_NAME))) {
             LOGGER.log(Level.WARN, "Adds comment too frequent [userName={0}]", commenter.optString(User.USER_NAME));
             throw new ServiceException(langPropsService.get("tooFrequentCmtLabel"));
         }
@@ -427,7 +432,7 @@ public class CommentMgmtService {
 
             article = articleRepository.get(articleId);
 
-            if (!fromClient && !TuringQueryService.ROBOT_NAME.equals(commenterName)) {
+            if (!TuringQueryService.ROBOT_NAME.equals(commenterName)) {
                 int pointSum = Pointtransfer.TRANSFER_SUM_C_ADD_COMMENT;
 
                 // Point
@@ -465,13 +470,6 @@ public class CommentMgmtService {
 
             comment.put(Comment.COMMENT_AUTHOR_ID, commentAuthorId);
             comment.put(Comment.COMMENT_ON_ARTICLE_ID, articleId);
-            if (fromClient) {
-                comment.put(Comment.COMMENT_CLIENT_COMMENT_ID, requestJSONObject.optString(Comment.COMMENT_CLIENT_COMMENT_ID));
-
-                // Appends original commenter name
-                final String authorName = requestJSONObject.optString(Comment.COMMENT_T_AUTHOR_NAME);
-                content += " <i class='ft-small'>by " + authorName + "</i>";
-            }
 
             final String originalCmtId = requestJSONObject.optString(Comment.COMMENT_ORIGINAL_COMMENT_ID);
             comment.put(Comment.COMMENT_ORIGINAL_COMMENT_ID, originalCmtId);
@@ -561,7 +559,7 @@ public class CommentMgmtService {
 
             transaction.commit();
 
-            if (!fromClient && Comment.COMMENT_ANONYMOUS_C_PUBLIC == commentAnonymous
+            if (Comment.COMMENT_ANONYMOUS_C_PUBLIC == commentAnonymous
                     && Article.ARTICLE_ANONYMOUS_C_PUBLIC == articleAnonymous
                     && !TuringQueryService.ROBOT_NAME.equals(commenterName)) {
                 // Point
@@ -569,11 +567,11 @@ public class CommentMgmtService {
                 if (articleAuthorId.equals(commentAuthorId)) {
                     pointtransferMgmtService.transfer(commentAuthorId, Pointtransfer.ID_C_SYS,
                             Pointtransfer.TRANSFER_TYPE_C_ADD_COMMENT, Pointtransfer.TRANSFER_SUM_C_ADD_SELF_ARTICLE_COMMENT,
-                            commentId, System.currentTimeMillis());
+                            commentId, System.currentTimeMillis(), "");
                 } else {
                     pointtransferMgmtService.transfer(commentAuthorId, articleAuthorId,
                             Pointtransfer.TRANSFER_TYPE_C_ADD_COMMENT, Pointtransfer.TRANSFER_SUM_C_ADD_COMMENT,
-                            commentId, System.currentTimeMillis());
+                            commentId, System.currentTimeMillis(), "");
                 }
 
                 livenessMgmtService.incLiveness(commentAuthorId, Liveness.LIVENESS_COMMENT);
@@ -582,15 +580,9 @@ public class CommentMgmtService {
             // Event
             final JSONObject eventData = new JSONObject();
             eventData.put(Comment.COMMENT, comment);
-            eventData.put(Common.FROM_CLIENT, fromClient);
             eventData.put(Article.ARTICLE, article);
             eventData.put(UserExt.USER_COMMENT_VIEW_MODE, commentViewMode);
-
-            try {
-                eventManager.fireEventAsynchronously(new Event<JSONObject>(EventTypes.ADD_COMMENT_TO_ARTICLE, eventData));
-            } catch (final EventException e) {
-                LOGGER.log(Level.ERROR, e.getMessage(), e);
-            }
+            eventManager.fireEventAsynchronously(new Event<>(EventTypes.ADD_COMMENT_TO_ARTICLE, eventData));
 
             return ret;
         } catch (final RepositoryException e) {
@@ -614,6 +606,12 @@ public class CommentMgmtService {
         final Transaction transaction = commentRepository.beginTransaction();
 
         try {
+            final String commentAuthorId = comment.optString(Comment.COMMENT_AUTHOR_ID);
+            final JSONObject author = userRepository.get(commentAuthorId);
+            if (UserExt.USER_STATUS_C_VALID != author.optInt(UserExt.USER_STATUS)) {
+                throw new ServiceException(langPropsService.get("userStatusInvalidLabel"));
+            }
+
             final JSONObject oldComment = commentRepository.get(commentId);
             final String oldContent = oldComment.optString(Comment.COMMENT_CONTENT);
 
@@ -627,7 +625,6 @@ public class CommentMgmtService {
 
             commentRepository.update(commentId, comment);
 
-            final String commentAuthorId = comment.optString(Comment.COMMENT_AUTHOR_ID);
             if (!oldContent.equals(content)) {
                 // Revision
                 final JSONObject revision = new JSONObject();
@@ -657,28 +654,65 @@ public class CommentMgmtService {
                 if (now - createTime > 1000 * 60 * 5) {
                     pointtransferMgmtService.transfer(commentAuthorId, Pointtransfer.ID_C_SYS,
                             Pointtransfer.TRANSFER_TYPE_C_UPDATE_COMMENT,
-                            Pointtransfer.TRANSFER_SUM_C_UPDATE_COMMENT, commentId, now);
+                            Pointtransfer.TRANSFER_SUM_C_UPDATE_COMMENT, commentId, now, "");
                 }
             }
 
-            final boolean fromClient = comment.has(Comment.COMMENT_CLIENT_COMMENT_ID);
-
             // Event
             final JSONObject eventData = new JSONObject();
-            eventData.put(Common.FROM_CLIENT, fromClient);
             eventData.put(Article.ARTICLE, article);
             eventData.put(Comment.COMMENT, comment);
-            try {
-                eventManager.fireEventAsynchronously(new Event<>(EventTypes.UPDATE_COMMENT, eventData));
-            } catch (final EventException e) {
-                LOGGER.log(Level.ERROR, e.getMessage(), e);
-            }
+            eventManager.fireEventAsynchronously(new Event<>(EventTypes.UPDATE_COMMENT, eventData));
         } catch (final RepositoryException e) {
             if (transaction.isActive()) {
                 transaction.rollback();
             }
 
-            LOGGER.log(Level.ERROR, "Updates a comment[id=" + commentId + "] failed", e);
+            LOGGER.log(Level.ERROR, "Updates a comment [id=" + commentId + "] failed", e);
+            throw new ServiceException(e);
+        }
+    }
+
+    /**
+     * Updates the specified comment by the given comment id.
+     * <p>
+     * <b>Note</b>: This method just for admin console.
+     * </p>
+     *
+     * @param commentId the given comment id
+     * @param comment   the specified comment
+     * @throws ServiceException service exception
+     */
+    public void updateCommentByAdmin(final String commentId, final JSONObject comment) throws ServiceException {
+        final Transaction transaction = commentRepository.beginTransaction();
+
+        try {
+            final String commentAuthorId = comment.optString(Comment.COMMENT_AUTHOR_ID);
+            final JSONObject author = userRepository.get(commentAuthorId);
+            if (UserExt.USER_STATUS_C_VALID != author.optInt(UserExt.USER_STATUS)) {
+                throw new ServiceException(langPropsService.get("userStatusInvalidLabel"));
+            }
+
+            final JSONObject oldComment = commentRepository.get(commentId);
+            final String oldContent = oldComment.optString(Comment.COMMENT_CONTENT);
+
+            String content = comment.optString(Comment.COMMENT_CONTENT);
+            content = Emotions.toAliases(content);
+            content = content.replaceAll("\\s+$", ""); // https://github.com/b3log/symphony/issues/389
+            content += " "; // in case of tailing @user
+            content = content.replace(langPropsService.get("uploadingLabel", Locale.SIMPLIFIED_CHINESE), "");
+            content = content.replace(langPropsService.get("uploadingLabel", Locale.US), "");
+            comment.put(Comment.COMMENT_CONTENT, content);
+
+            commentRepository.update(commentId, comment);
+
+            transaction.commit();
+        } catch (final RepositoryException e) {
+            if (transaction.isActive()) {
+                transaction.rollback();
+            }
+
+            LOGGER.log(Level.ERROR, "Updates a comment [id=" + commentId + "] failed", e);
             throw new ServiceException(e);
         }
     }

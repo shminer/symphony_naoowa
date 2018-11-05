@@ -17,7 +17,7 @@
  */
 package org.b3log.symphony.service;
 
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.repository.RepositoryException;
@@ -52,13 +52,12 @@ public class RewardMgmtService {
      * Adds a reward with the specified request json object.
      *
      * @param requestJSONObject the specified request json object, for example,      <pre>
-     * {
-     *     "senderId"; "",
-     *     "dataId": "",
-     *     "type": int
-     * }
-     * </pre>
-     *
+     *                          {
+     *                              "senderId"; "",
+     *                              "dataId": "",
+     *                              "type": int
+     *                          }
+     *                          </pre>
      * @return reward id
      * @throws ServiceException service exception
      */

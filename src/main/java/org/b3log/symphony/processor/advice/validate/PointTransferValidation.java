@@ -17,22 +17,24 @@
  */
 package org.b3log.symphony.processor.advice.validate;
 
+import org.apache.commons.lang.StringUtils;
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
-import org.b3log.latke.ioc.inject.Named;
-import org.b3log.latke.ioc.inject.Singleton;
+import org.b3log.latke.ioc.Inject;
+import org.b3log.latke.ioc.Singleton;
 import org.b3log.latke.model.User;
 import org.b3log.latke.service.LangPropsService;
 import org.b3log.latke.servlet.HTTPRequestContext;
 import org.b3log.latke.servlet.advice.BeforeRequestProcessAdvice;
 import org.b3log.latke.servlet.advice.RequestProcessAdviceException;
 import org.b3log.latke.util.Requests;
-import org.b3log.latke.util.Strings;
 import org.b3log.symphony.model.Common;
+import org.b3log.symphony.model.Pointtransfer;
 import org.b3log.symphony.model.UserExt;
 import org.b3log.symphony.service.UserQueryService;
 import org.b3log.symphony.util.Symphonys;
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Whitelist;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
@@ -41,10 +43,9 @@ import java.util.Map;
  * Validates for user point transfer.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.0.1.2, Jun 2, 2018
+ * @version 1.0.1.4, Oct 1, 2018
  * @since 1.3.0
  */
-@Named
 @Singleton
 public class PointTransferValidation extends BeforeRequestProcessAdvice {
 
@@ -73,8 +74,8 @@ public class PointTransferValidation extends BeforeRequestProcessAdvice {
         }
 
         final String userName = requestJSONObject.optString(User.USER_NAME);
-        if (Strings.isEmptyOrNull(userName)
-                || UserExt.DEFAULT_CMTER_NAME.equals(userName) || UserExt.NULL_USER_NAME.equals(userName)) {
+        if (StringUtils.isBlank(userName)
+                || UserExt.COM_BOT_NAME.equals(userName) || UserExt.NULL_USER_NAME.equals(userName)) {
             throw new RequestProcessAdviceException(new JSONObject().put(Keys.MSG, langPropsService.get("notFoundUserLabel")));
         }
 
@@ -94,7 +95,7 @@ public class PointTransferValidation extends BeforeRequestProcessAdvice {
 
         request.setAttribute(Common.TO_USER, toUser);
 
-        final JSONObject currentUser = (JSONObject) request.getAttribute(User.USER);
+        final JSONObject currentUser = (JSONObject) request.getAttribute(Common.CURRENT_USER);
         if (UserExt.USER_STATUS_C_VALID != currentUser.optInt(UserExt.USER_STATUS)) {
             throw new RequestProcessAdviceException(new JSONObject().put(Keys.MSG, langPropsService.get("userStatusInvalidLabel")));
         }
@@ -108,5 +109,12 @@ public class PointTransferValidation extends BeforeRequestProcessAdvice {
         if (balance - amount < balanceMinLimit) {
             throw new RequestProcessAdviceException(new JSONObject().put(Keys.MSG, langPropsService.get("insufficientBalanceLabel")));
         }
+
+        String memo = StringUtils.trim(requestJSONObject.optString(Pointtransfer.MEMO));
+        if (128 < StringUtils.length(memo)) {
+            throw new RequestProcessAdviceException(new JSONObject().put(Keys.MSG, langPropsService.get("memoTooLargeLabel")));
+        }
+        memo = Jsoup.clean(memo, Whitelist.none());
+        request.setAttribute(Pointtransfer.MEMO, memo);
     }
 }

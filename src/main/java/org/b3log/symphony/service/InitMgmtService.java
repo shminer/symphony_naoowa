@@ -17,9 +17,10 @@
  */
 package org.b3log.symphony.service;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.b3log.latke.Keys;
 import org.b3log.latke.Latkes;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.User;
@@ -28,7 +29,6 @@ import org.b3log.latke.repository.jdbc.util.JdbcRepositories;
 import org.b3log.latke.service.ServiceException;
 import org.b3log.latke.service.annotation.Service;
 import org.b3log.latke.util.Ids;
-import org.b3log.latke.util.MD5;
 import org.b3log.symphony.model.*;
 import org.b3log.symphony.repository.*;
 import org.b3log.symphony.util.Symphonys;
@@ -43,7 +43,7 @@ import java.util.Set;
  * Initialization management service.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.2.1.11, Jun 25, 2018
+ * @version 1.2.1.16, Sep 28, 2018
  * @since 1.8.0
  */
 @Service
@@ -220,12 +220,11 @@ public class InitMgmtService {
     public void initSym() {
         try {
             final List<JSONObject> admins = userQueryService.getAdmins();
-
             if (null != admins && !admins.isEmpty()) { // Initialized already
                 return;
             }
         } catch (final ServiceException e) {
-            LOGGER.log(Level.ERROR, "Check init error", e);
+            LOGGER.log(Level.ERROR, "Check init failed", e);
 
             System.exit(0);
         }
@@ -237,9 +236,11 @@ public class InitMgmtService {
 
             final List<JdbcRepositories.CreateTableResult> createTableResults = JdbcRepositories.initAllTables();
             for (final JdbcRepositories.CreateTableResult createTableResult : createTableResults) {
-                LOGGER.log(Level.INFO, "Creates table result [tableName={0}, isSuccess={1}]",
+                LOGGER.log(Level.TRACE, "Creates table result [tableName={0}, isSuccess={1}]",
                         createTableResult.getName(), createTableResult.isSuccess());
             }
+
+            LOGGER.log(Level.INFO, "Created all tables, initializing database");
 
             final Transaction transaction = optionRepository.beginTransaction();
 
@@ -316,6 +317,14 @@ public class InitMgmtService {
             option.put(Option.OPTION_VALUE, DEFAULT_LANG);
             option.put(Option.OPTION_CATEGORY, Option.CATEGORY_C_MISC);
             optionRepository.add(option);
+
+            option = new JSONObject();
+            option.put(Keys.OBJECT_ID, Option.ID_C_MISC_ARTICLE_VISIT_COUNT_MODE);
+            option.put(Option.OPTION_VALUE, "0");
+            option.put(Option.OPTION_CATEGORY, Option.CATEGORY_C_MISC);
+            optionRepository.add(option);
+
+            LOGGER.info("Initialized option data");
 
             // Init permissions
             final JSONObject permission = new JSONObject();
@@ -517,6 +526,8 @@ public class InitMgmtService {
             permission.put(Keys.OBJECT_ID, Permission.PERMISSION_ID_C_MENU_ADMIN_REPORTS);
             permissionRepository.add(permission);
 
+            LOGGER.info("Initialized permission data");
+
             // Init roles
             final JSONObject role = new JSONObject();
 
@@ -549,6 +560,8 @@ public class InitMgmtService {
             role.put(Role.ROLE_NAME, "Visitor");
             role.put(Role.ROLE_DESCRIPTION, "");
             roleRepository.add(role);
+
+            LOGGER.info("Initialized role data");
 
             // Init Role-Permission
             final JSONObject rolePermission = new JSONObject();
@@ -598,30 +611,35 @@ public class InitMgmtService {
                 rolePermissionRepository.add(rolePermission);
             }
 
+            LOGGER.info("Initialized role-permission data");
+
             transaction.commit();
 
             // Init admin
             final JSONObject admin = new JSONObject();
             admin.put(User.USER_EMAIL, "admin" + UserExt.USER_BUILTIN_EMAIL_SUFFIX);
             admin.put(User.USER_NAME, "admin");
-            admin.put(User.USER_PASSWORD, MD5.hash("admin"));
+            admin.put(User.USER_PASSWORD, DigestUtils.md5Hex("admin"));
             admin.put(UserExt.USER_LANGUAGE, DEFAULT_LANG);
             admin.put(User.USER_ROLE, Role.ROLE_ID_C_ADMIN);
             admin.put(UserExt.USER_STATUS, UserExt.USER_STATUS_C_VALID);
             admin.put(UserExt.USER_GUIDE_STEP, UserExt.USER_GUIDE_STEP_FIN);
+            admin.put(UserExt.USER_AVATAR_URL, AvatarQueryService.DEFAULT_AVATAR_URL);
             final String adminId = userMgmtService.addUser(admin);
             admin.put(Keys.OBJECT_ID, adminId);
 
-            // Init default commenter (for sync comment from client)
-            final JSONObject defaultCommenter = new JSONObject();
-            defaultCommenter.put(User.USER_EMAIL, UserExt.DEFAULT_CMTER_EMAIL);
-            defaultCommenter.put(User.USER_NAME, UserExt.DEFAULT_CMTER_NAME);
-            defaultCommenter.put(User.USER_PASSWORD, MD5.hash(String.valueOf(new Random().nextInt())));
-            defaultCommenter.put(UserExt.USER_LANGUAGE, "en_US");
-            defaultCommenter.put(UserExt.USER_GUIDE_STEP, UserExt.USER_GUIDE_STEP_FIN);
-            defaultCommenter.put(User.USER_ROLE, UserExt.DEFAULT_CMTER_ROLE);
-            defaultCommenter.put(UserExt.USER_STATUS, UserExt.USER_STATUS_C_VALID);
-            userMgmtService.addUser(defaultCommenter);
+            // Init community bot
+            final JSONObject comBot = new JSONObject();
+            comBot.put(User.USER_EMAIL, UserExt.COM_BOT_EMAIL);
+            comBot.put(User.USER_NAME, UserExt.COM_BOT_NAME);
+            comBot.put(User.USER_PASSWORD, DigestUtils.md5Hex(String.valueOf(new Random().nextInt())));
+            comBot.put(UserExt.USER_LANGUAGE, "en_US");
+            comBot.put(UserExt.USER_GUIDE_STEP, UserExt.USER_GUIDE_STEP_FIN);
+            comBot.put(User.USER_ROLE, Role.ROLE_ID_C_DEFAULT);
+            comBot.put(UserExt.USER_STATUS, UserExt.USER_STATUS_C_VALID);
+            userMgmtService.addUser(comBot);
+
+            LOGGER.info("Initialized admin user");
 
             // Add tags
             String tagTitle = Symphonys.get("systemAnnounce");
@@ -640,7 +658,7 @@ public class InitMgmtService {
 
             articleMgmtService.addArticle(article);
 
-            LOGGER.info("Initialized Sym, have fun :)");
+            LOGGER.info("Initialized Sym, have fun!");
         } catch (final Exception e) {
             LOGGER.log(Level.ERROR, "Initializes Sym failed", e);
 

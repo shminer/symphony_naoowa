@@ -68,16 +68,12 @@
             <@head title="${anonymousCommentLabel} - ${user.userName} - ${symphonyLabel}">
         <meta name="description" content="${user.userName}${deLabel}${settingsLabel}"/>
             </@head>
-        <#elseif type == "linkForge">
-            <@head title="${linkForgeLabel} - ${user.userName} - ${symphonyLabel}">
-        <meta name="description" content="${user.userName}${deLabel}${linkForgeLabel}"/>
-            </@head>
         <#elseif type == "breezemoons">
             <@head title="${breezemoonLabel} - ${user.userName} - ${symphonyLabel}">
         <meta name="description" content="只与清风、明月为伴。清凉的风，明朗的月。"/>
             </@head>
         </#if>
-    <link rel="stylesheet" href="${staticServePath}/js/lib/highlight.js-9.6.0/styles/github.css">
+    <link rel="stylesheet" href="${staticServePath}/js/lib/highlight/styles/github.css">
 </head>
 <body>
         <#include "../header.ftl">
@@ -107,8 +103,6 @@
                         ${anonymousLabel}${cmtLabel}
                     <#elseif type == "settings">
                         ${settingsLabel}
-                    <#elseif type == "linkForge">
-                        ${linkForgeLabel}
                     <#elseif type == "breezemoons">
                         ${breezemoonLabel}
                     </#if>
@@ -181,11 +175,8 @@
     Label.tagsErrorLabel = "${tagsErrorLabel}"
     Label.invalidUserQQLabel = "${invalidUserQQLabel}"
     Label.invalidUserIntroLabel = "${invalidUserIntroLabel}"
-    Label.invalidUserB3KeyLabel = "${invalidUserB3KeyLabel}"
-    Label.invalidUserB3ClientURLLabel = "${invalidUserB3ClientURLLabel}"
     Label.confirmPwdErrorLabel = "${confirmPwdErrorLabel}"
     Label.invalidUserNicknameLabel = "${invalidUserNicknameLabel}"
-    Label.forgeUploadSuccLabel = "${forgeUploadSuccLabel}"
     Label.type = '${type}'
     Label.userName = '${user.userName}'
 

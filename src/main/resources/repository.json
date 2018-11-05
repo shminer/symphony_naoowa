@@ -1,6 +1,6 @@
 {
   "description": "Description of repository structures, for generation of the relational database table and persistence validation.",
-  "version": "4.39.0.2, Jul 20, 2018",
+  "version": "4.40.0.5, Oct 1, 2018",
   "authors": [
     "Liang Ding",
     "Zephyr",
@@ -8,6 +8,70 @@
   ],
   "since": "0.2.0",
   "repositories": [
+    {
+      "name": "visit",
+      "description": "浏览表 https://github.com/b3log/symphony/issues/687",
+      "keys": [
+        {
+          "name": "oId",
+          "type": "String",
+          "length": 19,
+          "description": "主键"
+        },
+        {
+          "name": "visitURL",
+          "type": "String",
+          "length": 255,
+          "description": "浏览链接"
+        },
+        {
+          "name": "visitIP",
+          "type": "String",
+          "length": 128,
+          "description": "IP"
+        },
+        {
+          "name": "visitUA",
+          "type": "String",
+          "length": 255,
+          "description": "User-Agent"
+        },
+        {
+          "name": "visitCity",
+          "type": "String",
+          "length": 32,
+          "description": "城市"
+        },
+        {
+          "name": "visitDeviceId",
+          "type": "String",
+          "length": 255,
+          "description": "设备唯一标识"
+        },
+        {
+          "name": "visitUserId",
+          "type": "String",
+          "length": 19,
+          "description": "浏览者 id"
+        },
+        {
+          "name": "visitRefererURL",
+          "type": "String",
+          "length": 255,
+          "description": "上游链接"
+        },
+        {
+          "name": "visitCreated",
+          "type": "long",
+          "description": "统计时间"
+        },
+        {
+          "name": "visitExpired",
+          "type": "long",
+          "description": "统计过期时间"
+        }
+      ]
+    },
     {
       "name": "report",
       "description": "举报表",
@@ -186,6 +250,12 @@
           "description": "主键"
         },
         {
+          "name": "linkAddrHash",
+          "type": "String",
+          "length": 64,
+          "description": "链接地址 Hash https://github.com/b3log/symphony/issues/773"
+        },
+        {
           "name": "linkAddr",
           "type": "String",
           "length": 512,
@@ -196,11 +266,6 @@
           "type": "String",
           "length": 512,
           "description": "链接标题"
-        },
-        {
-          "name": "linkType",
-          "type": "int",
-          "description": "0：熔炉"
         },
         {
           "name": "linkSubmitCnt",
@@ -241,41 +306,17 @@
           "name": "linkPingErrCnt",
           "type": "int",
           "description": "Ping 失败计数"
-        }
-      ]
-    },
-    {
-      "name": "tag_user_link",
-      "description": "标签 - 用户 - 链接关联表",
-      "keys": [
-        {
-          "name": "oId",
-          "type": "String",
-          "length": 19,
-          "description": "主键"
         },
         {
-          "name": "linkId",
-          "type": "String",
-          "length": 19,
-          "description": "链接 id"
+          "name": "linkPingTime",
+          "type": "long",
+          "description": "Ping 时间"
         },
         {
-          "name": "tagId",
+          "name": "linkCardHTML",
           "type": "String",
-          "length": 19,
-          "description": "标签 id"
-        },
-        {
-          "name": "userId",
-          "type": "String",
-          "length": 19,
-          "description": "用户 id"
-        },
-        {
-          "name": "linkScore",
-          "type": "double",
-          "description": "链接评分"
+          "length": 10240,
+          "description": "链接卡片 HTML"
         }
       ]
     },
@@ -782,6 +823,12 @@
           "type": "String",
           "length": 19,
           "description": "数据实体 id"
+        },
+        {
+          "name": "memo",
+          "type": "String",
+          "length": 255,
+          "description": "备注"
         }
       ]
     },
@@ -857,13 +904,6 @@
           "type": "String",
           "length": 19,
           "description": "主键"
-        },
-        {
-          "name": "clientCommentId",
-          "type": "String",
-          "length": 32,
-          "nullable": true,
-          "description": "客户端评论 id"
         },
         {
           "name": "commentContent",
@@ -1057,6 +1097,17 @@
           "name": "tagRandomDouble",
           "type": "double",
           "description": "标签随机数，用于快速选择随机标签"
+        },
+        {
+          "name": "tagAd",
+          "type": "String",
+          "length": 1024,
+          "description": "标签广告"
+        },
+        {
+          "name": "tagShowSideAd",
+          "type": "int",
+          "description": "是否显示全站侧边栏广告"
         }
       ]
     },
@@ -1266,30 +1317,6 @@
           "description": "用户是否在线"
         },
         {
-          "name": "userB3Key",
-          "type": "String",
-          "length": 20,
-          "description": "B3 Key"
-        },
-        {
-          "name": "userB3ClientAddArticleURL",
-          "type": "String",
-          "length": 150,
-          "description": "客户端收文接口"
-        },
-        {
-          "name": "userB3ClientUpdateArticleURL",
-          "type": "String",
-          "length": 150,
-          "description": "客户端更新接口"
-        },
-        {
-          "name": "userB3ClientAddCommentURL",
-          "type": "String",
-          "length": 150,
-          "description": "客户端收评接口"
-        },
-        {
           "name": "userRole",
           "type": "String",
           "length": 20,
@@ -1437,11 +1464,6 @@
           "description": "0：公开地理位置，1：不公开地理位置"
         },
         {
-          "name": "syncWithSymphonyClient",
-          "type": "boolean",
-          "description": "是否开启 B3 同步"
-        },
-        {
           "name": "userCommentViewMode",
           "type": "int",
           "description": "0：传统回帖浏览模式（按时间升序），1：实时回帖浏览模式（按时间降序）"
@@ -1507,16 +1529,6 @@
           "description": "0：公开在线状态，1：不公开在线状态"
         },
         {
-          "name": "userTimelineStatus",
-          "type": "int",
-          "description": "0：公开此刻，1：不公开此刻"
-        },
-        {
-          "name": "userForgeLinkStatus",
-          "type": "int",
-          "description": "0：公开链接熔炉，1：不公开链接熔炉"
-        },
-        {
           "name": "userListPageSize",
           "type": "int",
           "description": "帖子列表每页显示条数"
@@ -1567,6 +1579,11 @@
           "name": "userGuideStep",
           "type": "int",
           "description": "新注册后向导到达第几步"
+        },
+        {
+          "name": "userForwardPageStatus",
+          "type": "int",
+          "description": "0：使用重定向页面，1：禁用重定向页面"
         }
       ]
     },
@@ -1663,25 +1680,6 @@
           "description": "帖子是否可回帖"
         },
         {
-          "name": "syncWithSymphonyClient",
-          "type": "boolean",
-          "description": "是否开启客户端同步，社区版不用关注该字段"
-        },
-        {
-          "name": "clientArticleId",
-          "type": "String",
-          "length": 32,
-          "nullable": true,
-          "description": "客户端文章 id，社区版不用关注该字段"
-        },
-        {
-          "name": "clientArticlePermalink",
-          "type": "String",
-          "length": 255,
-          "nullable": true,
-          "description": "客户端文章访问路径，社区版不用关注该字段"
-        },
-        {
           "name": "articleEditorType",
           "type": "int",
           "description": "0：CodeMirror-Markdown"
@@ -1774,6 +1772,12 @@
           "name": "articlePushOrder",
           "type": "int",
           "description": "周/月邮件推送优先级"
+        },
+        {
+          "name": "articleImg1URL",
+          "type": "String",
+          "length": 255,
+          "description": "帖子首图地址"
         }
       ]
     },

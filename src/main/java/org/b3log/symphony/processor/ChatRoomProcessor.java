@@ -20,7 +20,7 @@ package org.b3log.symphony.processor;
 import com.qiniu.util.Auth;
 import org.apache.commons.lang.StringUtils;
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.User;
@@ -30,7 +30,9 @@ import org.b3log.latke.servlet.annotation.After;
 import org.b3log.latke.servlet.annotation.Before;
 import org.b3log.latke.servlet.annotation.RequestProcessing;
 import org.b3log.latke.servlet.annotation.RequestProcessor;
-import org.b3log.latke.servlet.renderer.freemarker.AbstractFreeMarkerRenderer;
+import org.b3log.latke.servlet.renderer.AbstractFreeMarkerRenderer;
+import org.b3log.latke.util.Locales;
+import org.b3log.latke.util.Times;
 import org.b3log.symphony.model.*;
 import org.b3log.symphony.processor.advice.AnonymousViewCheck;
 import org.b3log.symphony.processor.advice.LoginCheck;
@@ -41,6 +43,7 @@ import org.b3log.symphony.processor.advice.validate.ChatMsgAddValidation;
 import org.b3log.symphony.processor.channel.ChatRoomChannel;
 import org.b3log.symphony.service.*;
 import org.b3log.symphony.util.Emotions;
+import org.b3log.symphony.util.JSONs;
 import org.b3log.symphony.util.Markdowns;
 import org.b3log.symphony.util.Symphonys;
 import org.json.JSONObject;
@@ -51,19 +54,20 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.b3log.symphony.processor.channel.ChatRoomChannel.SESSIONS;
 
 /**
  * Chat room processor.
  * <ul>
- * <li>Shows char room (/cr, /chat-room, /community), GET</li>
+ * <li>Shows char room (/cr), GET</li>
  * <li>Sends chat message (/chat-room/send), POST</li>
  * <li>Receives <a href="https://github.com/b3log/xiaov">XiaoV</a> message (/community/push), POST</li>
  * </ul>
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.3.5.13, Jul 17, 2018
+ * @version 1.3.5.16, Oct 21, 2018
  * @since 1.4.0
  */
 @RequestProcessor
@@ -235,15 +239,14 @@ public class ChatRoomProcessor {
         content = Markdowns.toHTML(content);
         content = Markdowns.clean(content, "");
 
-        final JSONObject currentUser = (JSONObject) request.getAttribute(User.USER);
+        final JSONObject currentUser = (JSONObject) request.getAttribute(Common.CURRENT_USER);
         final String userName = currentUser.optString(User.USER_NAME);
 
         final JSONObject msg = new JSONObject();
         msg.put(User.USER_NAME, userName);
         msg.put(UserExt.USER_AVATAR_URL, currentUser.optString(UserExt.USER_AVATAR_URL));
         msg.put(Common.CONTENT, content);
-
-        ChatRoomChannel.notifyChat(msg);
+        msg.put(Common.TIME, System.currentTimeMillis());
 
         messages.addFirst(msg);
         final int maxCnt = Symphonys.getInt("chatRoom.msgCnt");
@@ -251,27 +254,36 @@ public class ChatRoomProcessor {
             messages.remove(maxCnt);
         }
 
+        final JSONObject pushMsg = JSONs.clone(msg);
+        pushMsg.put(Common.TIME, Times.getTimeAgo(msg.optLong(Common.TIME), Locales.getLocale()));
+        ChatRoomChannel.notifyChat(pushMsg);
+
         if (content.contains("@" + TuringQueryService.ROBOT_NAME + " ")) {
             content = content.replaceAll("@" + TuringQueryService.ROBOT_NAME + " ", "");
             final String xiaoVSaid = turingQueryService.chat(currentUser.optString(User.USER_NAME), content);
             if (null != xiaoVSaid) {
                 final JSONObject xiaoVMsg = new JSONObject();
                 xiaoVMsg.put(User.USER_NAME, TuringQueryService.ROBOT_NAME);
-                xiaoVMsg.put(UserExt.USER_AVATAR_URL, TuringQueryService.ROBOT_AVATAR + "?imageView2/1/w/48/h/48/interlace/0/q/100");
+                xiaoVMsg.put(UserExt.USER_AVATAR_URL, TuringQueryService.ROBOT_AVATAR + "?imageView2/1/w/48/h/48/interlace/0/q");
                 xiaoVMsg.put(Common.CONTENT, "<p>@" + userName + " " + xiaoVSaid + "</p>");
-
-                ChatRoomChannel.notifyChat(xiaoVMsg);
+                xiaoVMsg.put(Common.TIME, System.currentTimeMillis());
 
                 messages.addFirst(xiaoVMsg);
                 if (messages.size() > maxCnt) {
                     messages.remove(maxCnt);
                 }
+
+                final JSONObject pushXiaoVMsg = JSONs.clone(xiaoVMsg);
+                pushXiaoVMsg.put(Common.TIME, Times.getTimeAgo(System.currentTimeMillis(), Locales.getLocale()));
+                ChatRoomChannel.notifyChat(pushXiaoVMsg);
             }
         }
 
         context.renderTrueResult();
 
         currentUser.put(UserExt.USER_LATEST_CMT_TIME, System.currentTimeMillis());
+        currentUser.remove(UserExt.USER_T_POINT_CC);
+        currentUser.remove(UserExt.USER_T_POINT_HEX);
         try {
             userMgmtService.updateUser(currentUser.optString(Keys.OBJECT_ID), currentUser);
         } catch (final Exception e) {
@@ -285,19 +297,19 @@ public class ChatRoomProcessor {
      * @param context  the specified context
      * @param request  the specified request
      * @param response the specified response
-     * @throws Exception exception
      */
-    @RequestProcessing(value = {"/cr", "/chat-room", "/community"}, method = HTTPRequestMethod.GET)
+    @RequestProcessing(value = "/cr", method = HTTPRequestMethod.GET)
     @Before(adviceClass = {StopwatchStartAdvice.class, AnonymousViewCheck.class})
     @After(adviceClass = {PermissionGrant.class, StopwatchEndAdvice.class})
-    public void showChatRoom(final HTTPRequestContext context,
-                             final HttpServletRequest request, final HttpServletResponse response) throws Exception {
+    public void showChatRoom(final HTTPRequestContext context, final HttpServletRequest request, final HttpServletResponse response) {
         final AbstractFreeMarkerRenderer renderer = new SkinRenderer(request);
         context.setRenderer(renderer);
         renderer.setTemplateName("chat-room.ftl");
         final Map<String, Object> dataModel = renderer.getDataModel();
 
-        dataModel.put(Common.MESSAGES, messages);
+        final List<JSONObject> msgs = messages.stream().
+                map(msg -> JSONs.clone(msg).put(Common.TIME, Times.getTimeAgo(msg.optLong(Common.TIME), Locales.getLocale()))).collect(Collectors.toList());
+        dataModel.put(Common.MESSAGES, msgs);
         dataModel.put("chatRoomMsgCnt", Symphonys.getInt("chatRoom.msgCnt"));
 
         // Qiniu file upload authenticate
@@ -309,13 +321,9 @@ public class ChatRoomProcessor {
         dataModel.put("imgMaxSize", imgMaxSize);
         final long fileMaxSize = Symphonys.getLong("upload.file.maxSize");
         dataModel.put("fileMaxSize", fileMaxSize);
-
         dataModel.put(Common.ONLINE_CHAT_CNT, SESSIONS.size());
 
         dataModelService.fillHeaderAndFooter(request, response, dataModel);
-
-        final int avatarViewMode = (int) request.getAttribute(UserExt.USER_AVATAR_VIEW_MODE);
-
         dataModelService.fillRandomArticles(dataModel);
         dataModelService.fillSideHotArticles(dataModel);
         dataModelService.fillSideTags(dataModel);
@@ -333,8 +341,7 @@ public class ChatRoomProcessor {
     @RequestProcessing(value = "/community/push", method = HTTPRequestMethod.POST)
     @Before(adviceClass = StopwatchStartAdvice.class)
     @After(adviceClass = StopwatchEndAdvice.class)
-    public synchronized void receiveXiaoV(final HTTPRequestContext context,
-                                          final HttpServletRequest request, final HttpServletResponse response) throws Exception {
+    public synchronized void receiveXiaoV(final HTTPRequestContext context, final HttpServletRequest request, final HttpServletResponse response) throws Exception {
         final String key = Symphonys.get("xiaov.key");
         if (!key.equals(request.getParameter("key"))) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN);
@@ -357,10 +364,9 @@ public class ChatRoomProcessor {
         final JSONObject ret = new JSONObject();
         context.renderJSON(ret);
 
-        final String defaultAvatarURL = Symphonys.get("defaultThumbnailURL");
         final JSONObject chatroomMsg = new JSONObject();
         chatroomMsg.put(User.USER_NAME, user);
-        chatroomMsg.put(UserExt.USER_AVATAR_URL, defaultAvatarURL);
+        chatroomMsg.put(UserExt.USER_AVATAR_URL, AvatarQueryService.DEFAULT_AVATAR_URL);
         chatroomMsg.put(Common.CONTENT, msg);
 
         ChatRoomChannel.notifyChat(chatroomMsg);

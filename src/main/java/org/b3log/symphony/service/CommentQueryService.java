@@ -21,7 +21,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.b3log.latke.Keys;
 import org.b3log.latke.Latkes;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.Pagination;
@@ -30,12 +30,8 @@ import org.b3log.latke.repository.*;
 import org.b3log.latke.service.LangPropsService;
 import org.b3log.latke.service.ServiceException;
 import org.b3log.latke.service.annotation.Service;
-import org.b3log.latke.util.CollectionUtils;
-import org.b3log.latke.util.Locales;
-import org.b3log.latke.util.Paginator;
-import org.b3log.latke.util.Stopwatchs;
+import org.b3log.latke.util.*;
 import org.b3log.symphony.model.*;
-import org.b3log.symphony.processor.advice.validate.UserRegisterValidation;
 import org.b3log.symphony.repository.ArticleRepository;
 import org.b3log.symphony.repository.CommentRepository;
 import org.b3log.symphony.repository.UserRepository;
@@ -52,7 +48,7 @@ import java.util.*;
  * Comment management service.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 2.12.1.2, Jul 16, 2018
+ * @version 2.12.2.1, Aug 21, 2018
  * @since 0.2.0
  */
 @Service
@@ -232,12 +228,13 @@ public class CommentQueryService {
     /**
      * Gets original comment of a comment specified by the given comment id.
      *
+     * @param currentUserId   the specified current user id, may be null
      * @param avatarViewMode  the specified avatar view mode
      * @param commentViewMode the specified comment view mode
      * @param commentId       the given comment id
      * @return original comment, return {@code null} if not found
      */
-    public JSONObject getOriginalComment(final int avatarViewMode, final int commentViewMode, final String commentId) {
+    public JSONObject getOriginalComment(final String currentUserId, final int avatarViewMode, final int commentViewMode, final String commentId) {
         try {
             final JSONObject comment = commentRepository.get(commentId);
 
@@ -264,6 +261,18 @@ public class CommentQueryService {
                     comment.optString(Comment.COMMENT_ON_ARTICLE_ID), commentId,
                     commentViewMode, pageSize));
 
+            // https://github.com/b3log/symphony/issues/682
+            if (Comment.COMMENT_VISIBLE_C_AUTHOR == comment.optInt(Comment.COMMENT_VISIBLE)) {
+                final String commentAuthorId = comment.optString(Comment.COMMENT_AUTHOR_ID);
+                final String articleId = comment.optString(Comment.COMMENT_ON_ARTICLE_ID);
+                final JSONObject article = articleRepository.get(articleId);
+                final String articleAuthorId = article.optString(Article.ARTICLE_AUTHOR_ID);
+                if (StringUtils.isBlank(currentUserId) ||
+                        (!StringUtils.equals(currentUserId, commentAuthorId) && !StringUtils.equals(currentUserId, articleAuthorId))) {
+                    ret.put(Comment.COMMENT_CONTENT, langPropsService.get("onlySelfAndArticleAuthorVisibleLabel"));
+                }
+            }
+
             return ret;
         } catch (final RepositoryException e) {
             LOGGER.log(Level.ERROR, "Get replies failed", e);
@@ -275,12 +284,13 @@ public class CommentQueryService {
     /**
      * Gets replies of a comment specified by the given comment id.
      *
+     * @param currentUserId   the specified current user id, may be null
      * @param avatarViewMode  the specified avatar view mode
      * @param commentViewMode the specified comment view mode
      * @param commentId       the given comment id
      * @return a list of replies, return an empty list if not found
      */
-    public List<JSONObject> getReplies(final int avatarViewMode, final int commentViewMode, final String commentId) {
+    public List<JSONObject> getReplies(final String currentUserId, final int avatarViewMode, final int commentViewMode, final String commentId) {
         final Query query = new Query().addSort(Keys.OBJECT_ID, SortDirection.DESCENDING).
                 setPageSize(Integer.MAX_VALUE).setCurrentPageNum(1).setPageCount(1)
                 .setFilter(CompositeFilterOperator.and(
@@ -316,6 +326,19 @@ public class CommentQueryService {
                 reply.put(Pagination.PAGINATION_CURRENT_PAGE_NUM, getCommentPage(
                         comment.optString(Comment.COMMENT_ON_ARTICLE_ID), reply.optString(Keys.OBJECT_ID),
                         commentViewMode, pageSize));
+                reply.put(Comment.COMMENT_VISIBLE, comment.optInt(Comment.COMMENT_VISIBLE));
+
+                // https://github.com/b3log/symphony/issues/682
+                if (Comment.COMMENT_VISIBLE_C_AUTHOR == comment.optInt(Comment.COMMENT_VISIBLE)) {
+                    final String commentAuthorId = comment.optString(Comment.COMMENT_AUTHOR_ID);
+                    final String articleId = comment.optString(Comment.COMMENT_ON_ARTICLE_ID);
+                    final JSONObject article = articleRepository.get(articleId);
+                    final String articleAuthorId = article.optString(Article.ARTICLE_AUTHOR_ID);
+                    if (StringUtils.isBlank(currentUserId) ||
+                            (!StringUtils.equals(currentUserId, commentAuthorId) && !StringUtils.equals(currentUserId, articleAuthorId))) {
+                        reply.put(Comment.COMMENT_CONTENT, langPropsService.get("onlySelfAndArticleAuthorVisibleLabel"));
+                    }
+                }
             }
 
             return ret;
@@ -488,7 +511,7 @@ public class CommentQueryService {
                 .setCurrentPageNum(1).setPageSize(fetchSize).setPageCount(1);
         try {
             final JSONObject result = commentRepository.get(query);
-            final List<JSONObject> ret = CollectionUtils.<JSONObject>jsonArrayToList(result.optJSONArray(Keys.RESULTS));
+            final List<JSONObject> ret = CollectionUtils.jsonArrayToList(result.optJSONArray(Keys.RESULTS));
 
             for (final JSONObject comment : ret) {
                 comment.put(Comment.COMMENT_CREATE_TIME, comment.optLong(Comment.COMMENT_CREATE_TIME));
@@ -519,8 +542,8 @@ public class CommentQueryService {
                 }
 
                 final String commenterEmail = commenter.optString(User.USER_EMAIL);
-                String avatarURL = Symphonys.get("defaultThumbnailURL");
-                if (!UserExt.DEFAULT_CMTER_EMAIL.equals(commenterEmail)) {
+                String avatarURL = AvatarQueryService.DEFAULT_AVATAR_URL;
+                if (!UserExt.COM_BOT_EMAIL.equals(commenterEmail)) {
                     avatarURL = avatarQueryService.getAvatarURLByUser(avatarViewMode, commenter, "20");
                 }
                 commenter.put(UserExt.USER_AVATAR_URL, avatarURL);
@@ -557,7 +580,7 @@ public class CommentQueryService {
                         ));
         try {
             final JSONObject result = commentRepository.get(query);
-            final List<JSONObject> ret = CollectionUtils.<JSONObject>jsonArrayToList(result.optJSONArray(Keys.RESULTS));
+            final List<JSONObject> ret = CollectionUtils.jsonArrayToList(result.optJSONArray(Keys.RESULTS));
             if (ret.isEmpty()) {
                 return ret;
             }
@@ -695,7 +718,7 @@ public class CommentQueryService {
             } finally {
                 Stopwatchs.end();
             }
-            final List<JSONObject> ret = CollectionUtils.<JSONObject>jsonArrayToList(result.optJSONArray(Keys.RESULTS));
+            final List<JSONObject> ret = CollectionUtils.jsonArrayToList(result.optJSONArray(Keys.RESULTS));
 
             organizeComments(avatarViewMode, ret);
 
@@ -719,9 +742,13 @@ public class CommentQueryService {
 
                     // Fill original comment
                     final JSONObject originalCmt = commentRepository.get(originalCmtId);
-                    organizeComment(avatarViewMode, originalCmt);
-                    comment.put(Comment.COMMENT_T_ORIGINAL_AUTHOR_THUMBNAIL_URL,
-                            originalCmt.optString(Comment.COMMENT_T_AUTHOR_THUMBNAIL_URL));
+                    if (null != originalCmt) {
+                        organizeComment(avatarViewMode, originalCmt);
+                        comment.put(Comment.COMMENT_T_ORIGINAL_AUTHOR_THUMBNAIL_URL,
+                                originalCmt.optString(Comment.COMMENT_T_AUTHOR_THUMBNAIL_URL));
+                    } else {
+                        comment.put(Comment.COMMENT_ORIGINAL_COMMENT_ID, "");
+                    }
                 }
             } finally {
                 Stopwatchs.end();
@@ -796,7 +823,7 @@ public class CommentQueryService {
         pagination.put(Pagination.PAGINATION_PAGE_NUMS, pageNums);
 
         final JSONArray data = result.optJSONArray(Keys.RESULTS);
-        final List<JSONObject> comments = CollectionUtils.<JSONObject>jsonArrayToList(data);
+        final List<JSONObject> comments = CollectionUtils.jsonArrayToList(data);
 
         try {
             for (final JSONObject comment : comments) {
@@ -910,9 +937,6 @@ public class CommentQueryService {
     private void processCommentContent(final JSONObject comment) {
         final JSONObject commenter = comment.optJSONObject(Comment.COMMENT_T_COMMENTER);
 
-        final boolean sync = StringUtils.isNotBlank(comment.optString(Comment.COMMENT_CLIENT_COMMENT_ID));
-        comment.put(Common.FROM_CLIENT, sync);
-
         if (Comment.COMMENT_STATUS_C_INVALID == comment.optInt(Comment.COMMENT_STATUS)
                 || UserExt.USER_STATUS_C_INVALID == commenter.optInt(UserExt.USER_STATUS)) {
             comment.put(Comment.COMMENT_CONTENT, langPropsService.get("commentContentBlockLabel"));
@@ -929,21 +953,6 @@ public class CommentQueryService {
         commentContent = Markdowns.clean(commentContent, "");
         commentContent = MP3Players.render(commentContent);
         commentContent = VideoPlayers.render(commentContent);
-
-        if (sync) {
-            // "<i class='ft-small'>by 88250</i>"
-            String syncCommenterName = StringUtils.substringAfter(commentContent, "<i class=\"ft-small\">by ");
-            syncCommenterName = StringUtils.substringBefore(syncCommenterName, "</i>");
-
-            if (UserRegisterValidation.invalidUserName(syncCommenterName)) {
-                syncCommenterName = UserExt.ANONYMOUS_USER_NAME;
-            }
-
-            commentContent = commentContent.replaceAll("<i class=\"ft-small\">by .*</i>", "");
-
-            comment.put(Comment.COMMENT_T_AUTHOR_NAME, syncCommenterName);
-        }
-
         comment.put(Comment.COMMENT_CONTENT, commentContent);
     }
 }

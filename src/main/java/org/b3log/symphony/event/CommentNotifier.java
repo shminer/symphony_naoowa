@@ -22,10 +22,8 @@ import org.apache.commons.lang.time.DateFormatUtils;
 import org.b3log.latke.Keys;
 import org.b3log.latke.event.AbstractEventListener;
 import org.b3log.latke.event.Event;
-import org.b3log.latke.event.EventException;
-import org.b3log.latke.ioc.inject.Inject;
-import org.b3log.latke.ioc.inject.Named;
-import org.b3log.latke.ioc.inject.Singleton;
+import org.b3log.latke.ioc.Inject;
+import org.b3log.latke.ioc.Singleton;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.Pagination;
@@ -33,7 +31,6 @@ import org.b3log.latke.model.User;
 import org.b3log.latke.repository.*;
 import org.b3log.latke.service.LangPropsService;
 import org.b3log.symphony.model.*;
-import org.b3log.symphony.processor.advice.validate.UserRegisterValidation;
 import org.b3log.symphony.processor.channel.ArticleChannel;
 import org.b3log.symphony.processor.channel.ArticleListChannel;
 import org.b3log.symphony.repository.CommentRepository;
@@ -50,10 +47,9 @@ import java.util.Set;
  * Sends a comment notification.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.7.12.3, Jun 11, 2018
+ * @version 1.7.12.4, Jul 31, 2018
  * @since 0.2.0
  */
-@Named
 @Singleton
 public class CommentNotifier extends AbstractEventListener<JSONObject> {
 
@@ -135,14 +131,13 @@ public class CommentNotifier extends AbstractEventListener<JSONObject> {
     private RoleQueryService roleQueryService;
 
     @Override
-    public void action(final Event<JSONObject> event) throws EventException {
+    public void action(final Event<JSONObject> event) {
         final JSONObject data = event.getData();
         LOGGER.log(Level.TRACE, "Processing an event [type={0}, data={1}]", event.getType(), data);
 
         try {
             final JSONObject originalArticle = data.getJSONObject(Article.ARTICLE);
             final JSONObject originalComment = data.getJSONObject(Comment.COMMENT);
-            final boolean fromClient = data.optBoolean(Common.FROM_CLIENT);
             final int commentViewMode = data.optInt(UserExt.USER_COMMENT_VIEW_MODE);
 
             final String articleId = originalArticle.optString(Keys.OBJECT_ID);
@@ -212,7 +207,6 @@ public class CommentNotifier extends AbstractEventListener<JSONObject> {
                 chData.put(Comment.COMMENT_T_AUTHOR_THUMBNAIL_URL, avatarQueryService.getDefaultAvatarURL("48"));
             }
 
-            chData.put(Common.THUMBNAIL_UPDATE_TIME, commenter.optLong(UserExt.USER_UPDATE_TIME));
             chData.put(Common.TIME_AGO, langPropsService.get("justNowLabel"));
             chData.put(Comment.COMMENT_CREATE_TIME_STR, DateFormatUtils.format(chData.optLong(Comment.COMMENT_CREATE_TIME), "yyyy-MM-dd HH:mm:ss"));
             String thankTemplate = langPropsService.get("thankConfirmLabel");
@@ -228,23 +222,8 @@ public class CommentNotifier extends AbstractEventListener<JSONObject> {
             cc = MP3Players.render(cc);
             cc = VideoPlayers.render(cc);
 
-            if (fromClient) {
-                // "<i class='ft-small'>by 88250</i>"
-                String syncCommenterName = StringUtils.substringAfter(cc, "<i class=\"ft-small\">by ");
-                syncCommenterName = StringUtils.substringBefore(syncCommenterName, "</i>");
-
-                if (UserRegisterValidation.invalidUserName(syncCommenterName)) {
-                    syncCommenterName = UserExt.ANONYMOUS_USER_NAME;
-                }
-
-                cc = cc.replaceAll("<i class=\"ft-small\">by .*</i>", "");
-
-                chData.put(Comment.COMMENT_T_AUTHOR_NAME, syncCommenterName);
-            }
-
             chData.put(Comment.COMMENT_CONTENT, cc);
             chData.put(Comment.COMMENT_UA, originalComment.optString(Comment.COMMENT_UA));
-            chData.put(Common.FROM_CLIENT, fromClient);
 
             ArticleChannel.notifyComment(chData);
 
@@ -293,7 +272,7 @@ public class CommentNotifier extends AbstractEventListener<JSONObject> {
                     final int sum = count * Pointtransfer.TRANSFER_SUM_C_AT_PARTICIPANTS;
                     if (sum > 0) {
                         pointtransferMgmtService.transfer(commenterId, Pointtransfer.ID_C_SYS,
-                                Pointtransfer.TRANSFER_TYPE_C_AT_PARTICIPANTS, sum, commentId, System.currentTimeMillis());
+                                Pointtransfer.TRANSFER_TYPE_C_AT_PARTICIPANTS, sum, commentId, System.currentTimeMillis(), "");
                     }
 
                     return;

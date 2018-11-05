@@ -46,12 +46,6 @@
             <label for="articleUpdateTime">${updateTimeLabel}</label>
             <input type="text" id="articleUpdateTime" name="articleUpdateTime" value="${article.articleUpdateTime?c}" />
 
-            <label for="syncWithSymphonyClient">${symClientSyncLabel}</label>
-            <input type="text" id="syncWithSymphonyClient" name="syncWithSymphonyClient" value="${article.syncWithSymphonyClient?c}" readonly="readonly" />
-
-            <label for="clientArticleId">${clientArticleIdLabel}</label>
-            <input type="text" id="clientArticleId" name="clientArticleId" value="${article.clientArticleId}" readonly="readonly" />
-
             <label for="articleEditorType">${eidotrTypeLabel}</label>
             <input type="text" id="articleEditorType" name="articleEditorType" value="${article.articleEditorType}" readonly="readonly" />
 
@@ -93,6 +87,9 @@
 
                 <label for="articleRewardPoint">${rewardPointLabel}</label>
                 <input type="text" id="articleRewardPoint" name="articleRewardPoint" value="${article.articleRewardPoint?c}"/>
+
+                <label for="articleQnAOfferPoint">${qnaOfferPointLabel}</label>
+                <input type="text" id="articleQnAOfferPoint" name="articleQnAOfferPoint" value="${article.articleQnAOfferPoint?c}"/>
 
                 <label>${perfectLabel}</label>
                 <select id="articlePerfect" name="articlePerfect">

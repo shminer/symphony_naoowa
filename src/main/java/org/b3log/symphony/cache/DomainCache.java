@@ -17,11 +17,11 @@
  */
 package org.b3log.symphony.cache;
 
-import org.b3log.latke.ioc.inject.Inject;
-import org.b3log.latke.ioc.inject.Named;
-import org.b3log.latke.ioc.inject.Singleton;
+import org.b3log.latke.ioc.Inject;
+import org.b3log.latke.ioc.Singleton;
 import org.b3log.latke.logging.Logger;
 import org.b3log.symphony.service.DomainQueryService;
+import org.b3log.symphony.util.JSONs;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -34,10 +34,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * Domain cache.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.0.2.2, Jun 19, 2018
+ * @version 1.0.2.3, Aug 31, 2018
  * @since 1.4.0
  */
-@Named
 @Singleton
 public class DomainCache {
 
@@ -77,7 +76,7 @@ public class DomainCache {
 
             final int end = fetchSize >= DOMAINS.size() ? DOMAINS.size() : fetchSize;
 
-            return new ArrayList<>(DOMAINS.subList(0, end));
+            return JSONs.clone(DOMAINS.subList(0, end));
         } finally {
             LOCK.readLock().unlock();
         }

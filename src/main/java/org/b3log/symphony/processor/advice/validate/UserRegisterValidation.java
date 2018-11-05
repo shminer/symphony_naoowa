@@ -19,9 +19,8 @@ package org.b3log.symphony.processor.advice.validate;
 
 import org.apache.commons.lang.StringUtils;
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
-import org.b3log.latke.ioc.inject.Named;
-import org.b3log.latke.ioc.inject.Singleton;
+import org.b3log.latke.ioc.Inject;
+import org.b3log.latke.ioc.Singleton;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.User;
@@ -47,10 +46,9 @@ import java.util.Map;
  *
  * @author <a href="mailto:wmainlove@gmail.com">Love Yao</a>
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.5.2.11, Jan 10, 2017
+ * @version 1.5.2.12, Aug 12, 2018
  * @since 0.2.0
  */
-@Named
 @Singleton
 public class UserRegisterValidation extends BeforeRequestProcessAdvice {
 
@@ -204,7 +202,7 @@ public class UserRegisterValidation extends BeforeRequestProcessAdvice {
         if (!useInvitationLink && "2".equals(option.optString(Option.OPTION_VALUE))) {
             final String invitecode = requestJSONObject.optString(Invitecode.INVITECODE);
 
-            if (Strings.isEmptyOrNull(invitecode) || INVITECODE_LENGHT != invitecode.length()) {
+            if (StringUtils.isBlank(invitecode) || INVITECODE_LENGHT != invitecode.length()) {
                 checkField(true, "registerFailLabel", "invalidInvitecodeLabel");
             }
 
@@ -236,6 +234,7 @@ public class UserRegisterValidation extends BeforeRequestProcessAdvice {
 
         checkField(invalidUserName(name), "registerFailLabel", "invalidUserNameLabel");
         checkField(!Strings.isEmail(email), "registerFailLabel", "invalidEmailLabel");
+        checkField(!UserExt.isWhitelistMailDomain(email), "registerFailLabel", "invalidEmail1Label");
         checkField(UserExt.USER_APP_ROLE_C_HACKER != appRole
                 && UserExt.USER_APP_ROLE_C_PAINTER != appRole, "registerFailLabel", "invalidAppRoleLabel");
         //checkField(invalidUserPassword(password), "registerFailLabel", "invalidPasswordLabel");

@@ -19,7 +19,7 @@ package org.b3log.symphony.service;
 
 import org.apache.commons.lang.StringUtils;
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.Pagination;
@@ -27,18 +27,15 @@ import org.b3log.latke.model.User;
 import org.b3log.latke.repository.*;
 import org.b3log.latke.service.ServiceException;
 import org.b3log.latke.service.annotation.Service;
-import org.b3log.latke.util.CollectionUtils;
-import org.b3log.latke.util.Locales;
-import org.b3log.latke.util.Paginator;
-import org.b3log.latke.util.Stopwatchs;
+import org.b3log.latke.util.*;
 import org.b3log.symphony.model.Breezemoon;
 import org.b3log.symphony.model.Common;
 import org.b3log.symphony.model.UserExt;
 import org.b3log.symphony.repository.BreezemoonRepository;
 import org.b3log.symphony.repository.UserRepository;
 import org.b3log.symphony.util.Emotions;
+import org.b3log.symphony.util.Images;
 import org.b3log.symphony.util.Markdowns;
-import org.b3log.symphony.util.Times;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -48,7 +45,7 @@ import java.util.*;
  * Breezemoon query service.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.0.0.3, Jun 9, 2018
+ * @version 1.0.0.6, Sep 7, 2018
  * @since 2.8.0
  */
 @Service
@@ -82,6 +79,12 @@ public class BreezemoonQueryService {
      */
     @Inject
     private AvatarQueryService avatarQueryService;
+
+    /**
+     * Short link query service.
+     */
+    @Inject
+    private ShortLinkQueryService shortLinkQueryService;
 
     /**
      * Get following user breezemoons.
@@ -158,7 +161,7 @@ public class BreezemoonQueryService {
     }
 
     /**
-     * Get breezemoon with the specified user id, current page number.
+     * Get breezemoons with the specified user id, current page number.
      *
      * @param avatarViewMode the specified avatar view mode
      * @param currentUserId  the specified current user id, may be {@code null}
@@ -331,9 +334,12 @@ public class BreezemoonQueryService {
             bm.put(Common.TIME_AGO, Times.getTimeAgo(time, Locales.getLocale()));
             bm.put(Breezemoon.BREEZEMOON_T_CREATE_TIME, new Date(time));
             String content = bm.optString(Breezemoon.BREEZEMOON_CONTENT);
+            content = shortLinkQueryService.linkArticle(content);
+            content = shortLinkQueryService.linkTag(content);
             content = Emotions.convert(content);
             content = Markdowns.toHTML(content);
             content = Markdowns.clean(content, "");
+            content = Images.qiniuImgProcessing(content);
             bm.put(Breezemoon.BREEZEMOON_CONTENT, content);
         }
     }

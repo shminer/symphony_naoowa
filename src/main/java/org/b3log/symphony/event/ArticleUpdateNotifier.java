@@ -20,10 +20,8 @@ package org.b3log.symphony.event;
 import org.b3log.latke.Keys;
 import org.b3log.latke.event.AbstractEventListener;
 import org.b3log.latke.event.Event;
-import org.b3log.latke.event.EventException;
-import org.b3log.latke.ioc.inject.Inject;
-import org.b3log.latke.ioc.inject.Named;
-import org.b3log.latke.ioc.inject.Singleton;
+import org.b3log.latke.ioc.Inject;
+import org.b3log.latke.ioc.Singleton;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.User;
@@ -46,7 +44,6 @@ import java.util.Set;
  * @version 1.0.0.3, Jan 30, 2018
  * @since 2.0.0
  */
-@Named
 @Singleton
 public class ArticleUpdateNotifier extends AbstractEventListener<JSONObject> {
 
@@ -80,7 +77,7 @@ public class ArticleUpdateNotifier extends AbstractEventListener<JSONObject> {
     private LangPropsService langPropsService;
 
     @Override
-    public void action(final Event<JSONObject> event) throws EventException {
+    public void action(final Event<JSONObject> event) {
         final JSONObject data = event.getData();
         LOGGER.log(Level.TRACE, "Processing an event [type={0}, data={1}]", event.getType(), data);
 

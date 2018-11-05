@@ -18,7 +18,7 @@
 package org.b3log.symphony.service;
 
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.Pagination;
@@ -113,12 +113,12 @@ public class InvitecodeQueryService {
      * Gets invitecodes by the specified request json object.
      *
      * @param requestJSONObject the specified request json object, for example,      <pre>
-     *                                                   {
-     *                                                       "paginationCurrentPageNum": 1,
-     *                                                       "paginationPageSize": 20,
-     *                                                       "paginationWindowSize": 10
-     *                                                   }, see {@link Pagination} for more details
-     *                                                   </pre>
+     *                                                                            {
+     *                                                                                "paginationCurrentPageNum": 1,
+     *                                                                                "paginationPageSize": 20,
+     *                                                                                "paginationWindowSize": 10
+     *                                                                            }, see {@link Pagination} for more details
+     *                                                                            </pre>
      * @return for example,      <pre>
      * {
      *     "pagination": {
@@ -165,7 +165,7 @@ public class InvitecodeQueryService {
         pagination.put(Pagination.PAGINATION_PAGE_NUMS, pageNums);
 
         final JSONArray data = result.optJSONArray(Keys.RESULTS);
-        final List<JSONObject> invitecodes = CollectionUtils.<JSONObject>jsonArrayToList(data);
+        final List<JSONObject> invitecodes = CollectionUtils.jsonArrayToList(data);
 
         ret.put(Invitecode.INVITECODES, invitecodes);
 

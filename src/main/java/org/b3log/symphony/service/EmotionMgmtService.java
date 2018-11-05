@@ -18,7 +18,7 @@
 package org.b3log.symphony.service;
 
 import org.apache.commons.lang.StringUtils;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.repository.RepositoryException;
@@ -58,7 +58,7 @@ public class EmotionMgmtService {
     /**
      * Sets a user's emotions.
      *
-     * @param userId the specified user id
+     * @param userId      the specified user id
      * @param emotionList the specified emotions
      * @throws ServiceException service exception
      */

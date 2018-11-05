@@ -17,7 +17,7 @@
  */
 package org.b3log.symphony.service;
 
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.repository.RepositoryException;
@@ -94,7 +94,7 @@ public class OptionMgmtService {
      * Updates the specified option by the given option id.
      *
      * @param optionId the given option id
-     * @param option the specified option
+     * @param option   the specified option
      * @throws ServiceException service exception
      */
     public void updateOption(final String optionId, final JSONObject option) throws ServiceException {

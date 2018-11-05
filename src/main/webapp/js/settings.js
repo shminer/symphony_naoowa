@@ -21,7 +21,7 @@
  * @author <a href="http://vanessa.b3log.org">Liyuan Li</a>
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
  * @author <a href="http://zephyr.b3log.org">Zephyr</a>
- * @version 1.26.0.0, June 26, 2018
+ * @version 1.26.0.5, Aug 29, 2018
  */
 
 /**
@@ -43,17 +43,17 @@ var Settings = {
       data: JSON.stringify({
         reportDataId: $('#reportDialog').data('id'),
         reportDataType: 2,
-        reportType: $('input[name=report]:checked').val( ),
+        reportType: $('input[name=report]:checked').val(),
         reportMemo: $('#reportTextarea').val()
       }),
       complete: function (result) {
         $btn.removeAttr('disabled').css('opacity', '1')
         if (result.responseJSON.sc === 0) {
-          alert(Label.reportSuccLabel)
+          Util.alert(Label.reportSuccLabel)
           $('#reportTextarea').val('')
           $('#reportDialog').dialog('close')
         } else {
-          alert(result.responseJSON.msg)
+          Util.alert(result.responseJSON.msg)
         }
       },
     })
@@ -81,7 +81,7 @@ var Settings = {
           $('#emailSubmitBtn').show()
           $('#emailGetBtn').hide()
         }
-        alert(result.msg)
+        Util.alert(result.msg)
         $('#emailGetBtn').removeAttr('disabled').css('opacity', '1')
       },
     })
@@ -109,7 +109,7 @@ var Settings = {
           $('#emailGetBtn').show()
           $('#emailInput').prop('disabled', false)
           $('.home-account__captch img').click()
-          alert(Label.updateSuccLabel)
+          Util.alert(Label.updateSuccLabel)
         } else {
           if (result.code === 1) {
             $('.home-account__captch').show()
@@ -121,7 +121,7 @@ var Settings = {
             $('#emailInput').prop('disabled', false)
             $('.home-account__captch img').click()
           }
-          alert(result.msg)
+          Util.alert(result.msg)
         }
         $('#emailSubmitBtn').removeAttr('disabled').css('opacity', '1')
       },
@@ -170,12 +170,12 @@ var Settings = {
    * @returns {Boolean}
    */
   initHljs: function () {
-    if ($('pre code').length === 0) {
+    if ($('pre code').length === 0 || Label.markedAvailable) {
       return false;
     }
     $.ajax({
       method: "GET",
-      url: Label.servePath + "/js/lib/highlight.js-9.6.0/highlight.pack.js",
+      url: Label.servePath + "/js/lib/highlight/highlight.pack.js",
       dataType: "script"
     }).done(function () {
       $('pre code').each(function (i, block) {
@@ -227,13 +227,13 @@ var Settings = {
               var isImg = isImage(fileBuf);
 
               if (!isImg) {
-                alert("Image only~");
+                Util.alert("Image only~");
 
                 return;
               }
 
               if (evt.target.result.byteLength > 1024 * 1024) {
-                alert("This image is too large (max 1M)");
+                Util.alert("This image is too large (max 1M)");
 
                 return;
               }
@@ -253,19 +253,19 @@ var Settings = {
         done: function (e, data) {
           var qiniuKey = data.result.key;
           if (!qiniuKey) {
-            alert("Upload error");
+            Util.alert("Upload error");
             return;
           }
 
           succCB(data);
         },
         fail: function (e, data) {
-          alert("Upload error: " + data.errorThrown);
+          Util.alert("Upload error: " + data.errorThrown);
         }
       }).on('fileuploadprocessalways', function (e, data) {
         var currentFile = data.files[data.index];
         if (data.files.error && currentFile.error) {
-          alert(currentFile.error);
+          Util.alert(currentFile.error);
         }
       });
     } else {
@@ -287,13 +287,13 @@ var Settings = {
               var isImg = isImage(fileBuf);
 
               if (!isImg) {
-                alert("Image only~");
+                Util.alert("Image only~");
 
                 return;
               }
 
               if (evt.target.result.byteLength > 1024 * 1024) {
-                alert("This image is too large (max 1M)");
+                Util.alert("This image is too large (max 1M)");
 
                 return;
               }
@@ -318,19 +318,19 @@ var Settings = {
         done: function (e, data) {
           var qiniuKey = data.result.key;
           if (!qiniuKey) {
-            alert("Upload error");
+            Util.alert("Upload error");
             return;
           }
 
           succCBQN(data);
         },
         fail: function (e, data) {
-          alert("Upload error: " + data.errorThrown);
+          Util.alert("Upload error: " + data.errorThrown);
         }
       }).on('fileuploadprocessalways', function (e, data) {
         var currentFile = data.files[data.index];
         if (data.files.error && currentFile.error) {
-          alert(currentFile.error);
+          Util.alert(currentFile.error);
         }
       });
     }
@@ -345,7 +345,7 @@ var Settings = {
       cache: false,
       success: function (result, textStatus) {
         if (!result.sc) {
-          alert("TBD: V, tip display it....");
+          Util.alert("TBD: V, tip display it....");
 
           return;
         }
@@ -395,7 +395,8 @@ var Settings = {
     })) {
       var requestJSONObject = {
         "userName": $("#pointTransferUserName").val(),
-        "amount": $("#pointTransferAmount").val()
+        "amount": $("#pointTransferAmount").val(),
+        "memo": $("#pointTransferMemo").val()
       };
 
       $.ajax({
@@ -408,13 +409,14 @@ var Settings = {
           $("#pointTransferTip").removeClass("succ").removeClass("error").html("");
         },
         error: function (jqXHR, textStatus, errorThrown) {
-          alert(errorThrown);
+          Util.alert(errorThrown);
         },
         success: function (result, textStatus) {
           if (result.sc) {
             $("#pointTransferTip").addClass("succ").removeClass("error").html('<ul><li>' + Label.transferSuccLabel + '</li></ul>');
             $("#pointTransferUserName").val('');
             $("#pointTransferAmount").val('');
+            $("#pointTransferMemo").val('');
           } else {
             $("#pointTransferTip").addClass("error").removeClass("succ").html('<ul><li>' + result.msg + '</li></ul>');
           }
@@ -445,7 +447,7 @@ var Settings = {
         $("#pointBuyInvitecodeTip").removeClass("succ").removeClass("error").html("");
       },
       error: function (jqXHR, textStatus, errorThrown) {
-        alert(errorThrown);
+        Util.alert(errorThrown);
       },
       success: function (result, textStatus) {
         if (result.sc) {
@@ -477,7 +479,7 @@ var Settings = {
         $("#invitecodeStateTip").removeClass("succ").removeClass("error").html("");
       },
       error: function (jqXHR, textStatus, errorThrown) {
-        alert(errorThrown);
+        Util.alert(errorThrown);
       },
       success: function (result, textStatus) {
         switch (result.sc) {
@@ -511,10 +513,6 @@ var Settings = {
         requestJSONObject = this._validateProfiles();
 
         break;
-      case "sync/b3":
-        requestJSONObject = this._validateSyncB3();
-
-        break;
       case "password":
         requestJSONObject = this._validatePassword();
 
@@ -533,8 +531,7 @@ var Settings = {
           userOnlineStatus: $("#userOnlineStatus").prop("checked"),
           userJoinPointRank: $("#joinPointRank").prop("checked"),
           userJoinUsedPointRank: $("#joinUsedPointRank").prop("checked"),
-          userUAStatus: $("#userUAStatus").prop("checked"),
-          userForgeLinkStatus: $("#userForgeLinkStatus").prop("checked")
+          userUAStatus: $("#userUAStatus").prop("checked")
         };
 
         break;
@@ -547,7 +544,8 @@ var Settings = {
           userNotifyStatus: $('#userNotifyStatus').prop("checked"),
           userSubMailStatus: $('#userSubMailStatus').prop("checked"),
           userKeyboardShortcutsStatus: $('#userKeyboardShortcutsStatus').prop("checked"),
-          userReplyWatchArticleStatus: $('#userReplyWatchArticleStatus').prop("checked")
+          userReplyWatchArticleStatus: $('#userReplyWatchArticleStatus').prop("checked"),
+          userForwardPageStatus: $('#userForwardPageStatus').prop("checked")
         };
 
         break;
@@ -561,6 +559,14 @@ var Settings = {
           userTimezone: $("#userTimezone").val()
         };
 
+        break;
+      case "username":
+        requestJSONObject = {
+          userName: $("#newUsername").val()
+        };
+
+        break;
+      case "deactivate":
         break;
       default:
         console.log("update settings has no type");
@@ -580,7 +586,7 @@ var Settings = {
         $("#" + type.replace(/\//g, "") + "Tip").removeClass("succ").removeClass("error").html("");
       },
       error: function (jqXHR, textStatus, errorThrown) {
-        alert(errorThrown);
+        Util.alert(errorThrown);
       },
       success: function (result, textStatus) {
         if (result.sc) {
@@ -594,8 +600,6 @@ var Settings = {
 
             return;
           }
-
-
         } else {
           $("#" + type.replace(/\//g, "") + "Tip").addClass("error").removeClass("succ").html('<ul><li>' + result.msg + '</li></ul>');
         }
@@ -608,8 +612,11 @@ var Settings = {
           if (type === 'i18n') {
             window.location.reload();
           }
-        }, 5000);
 
+          if (type === 'deactivate') {
+            window.location.href = Label.servePath;
+          }
+        }, 5000);
       }
     });
   },
@@ -631,7 +638,7 @@ var Settings = {
       beforeSend: function () {
       },
       error: function (jqXHR, textStatus, errorThrown) {
-        alert(errorThrown);
+        Util.alert(errorThrown);
       },
       success: function (result, textStatus) {
         if (result.sc) {
@@ -684,43 +691,6 @@ var Settings = {
     }
   },
   /**
-   * @description settings 页面 solo 数据同步校验
-   * @returns {boolean/obj} 当校验不通过时返回 false，否则返回校验数据值。
-   */
-  _validateSyncB3: function () {
-    if (Validate.goValidate({
-      target: $("#syncb3Tip"),
-      data: [{
-        "target": $("#soloKey"),
-        "type": "string",
-        'max': 20,
-        "msg": Label.invalidUserB3KeyLabel
-      }, {
-        "target": $("#soloPostURL"),
-        "type": "url",
-        "msg": Label.invalidUserB3ClientURLLabel
-      }, {
-        "target": $("#soloUpdateURL"),
-        "type": "url",
-        "msg": Label.invalidUserB3ClientURLLabel
-      }, {
-        "target": $("#soloCmtURL"),
-        "type": "url",
-        "msg": Label.invalidUserB3ClientURLLabel
-      }]
-    })) {
-      return {
-        userB3Key: $("#soloKey").val().replace(/(^\s*)|(\s*$)/g, ""),
-        userB3ClientAddArticleURL: $("#soloPostURL").val().replace(/(^\s*)|(\s*$)/g, ""),
-        userB3ClientUpdateArticleURL: $("#soloUpdateURL").val().replace(/(^\s*)|(\s*$)/g, ""),
-        userB3ClientAddCommentURL: $("#soloCmtURL").val().replace(/(^\s*)|(\s*$)/g, ""),
-        syncWithSymphonyClient: $("#syncWithSymphonyClient").prop("checked")
-      };
-    } else {
-      return false;
-    }
-  },
-  /**
    * @description settings 页面密码校验
    * @returns {boolean/obj} 当校验不通过时返回 false，否则返回校验数据值。
    */
@@ -764,7 +734,7 @@ var Settings = {
    */
   makeAllNotificationsRead: function () {
     $.ajax({
-      url: Label.servePath + "/notification/all-read",
+      url: Label.servePath + "/notifications/all-read",
       type: "GET",
       cache: false,
       success: function (result, textStatus) {
@@ -779,7 +749,7 @@ var Settings = {
    */
   removeNotifications: function (type) {
     $.ajax({
-      url: Label.servePath + '/notification/remove/' + type,
+      url: Label.servePath + '/notifications/remove/' + type,
       type: 'GET',
       cache: false,
       success: function (result) {
@@ -812,9 +782,6 @@ var Settings = {
   initHome: function () {
     if (Label.type === 'commentsAnonymous' || 'comments' === Label.type) {
       Settings.initHljs();
-    }
-    if (Label.type === 'linkForge') {
-      Util.linkForge();
     }
 
     $('#reportDialog').dialog({
@@ -867,10 +834,6 @@ var Settings = {
                 break;
               case '/member/' + Label.userName + '/points':
                 $('.home-menu a:eq(2)').addClass('current');
-                break;
-              case '/member/' + Label.userName + '/forge/link':
-                $('.home-menu a:eq(3)').addClass('current');
-                Util.linkForge();
                 break;
             }
           case 'error':

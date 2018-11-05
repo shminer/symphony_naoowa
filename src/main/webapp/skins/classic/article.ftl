@@ -101,12 +101,9 @@
                                 <span class="article-level<#if article.articleQnAOfferPoint lt 400>${(article.articleQnAOfferPoint/100)?int}<#else>4</#if>">${article.articleQnAOfferPoint?c}</span>
                                 ${qnaOfferLabel}
                             </#if>
-                                &nbsp;•&nbsp;
-                                ${article.timeAgo}
-                                <#if article.clientArticlePermalink?? && 0 < article.clientArticlePermalink?length>
-                                &nbsp;•&nbsp; <a href="${servePath}/forward?goto=${article.clientArticlePermalink}" target="_blank" rel="nofollow"><span class="ft-green">${sourceLabel}</span></a>
-                                </#if>
-                                <#if "" != article.articleCity>
+                             &nbsp;•&nbsp;
+                        ${article.timeAgo}
+                                <#if "" != article.articleCity && article.articleAnonymous == 0>
                                 &nbsp;•&nbsp; <a href="${servePath}/city/${article.articleCity}" target="_blank" rel="nofollow"><span class="ft-green">${article.articleCity}</span></a>
                                 </#if>
                             </span>
@@ -189,23 +186,15 @@
                         <ul>
                             <li>
                                 <div class="fn-flex">
-                                    <#if !article.articleOfferedComment.fromClient>
-                                        <#if article.articleOfferedComment.commentAnonymous == 0>
-                                    <a rel="nofollow" href="${servePath}/member/${article.articleOfferedComment.commentAuthorName}"></#if>
-                                        <div class="avatar tooltipped tooltipped-se"
-                                             aria-label="${article.articleOfferedComment.commentAuthorName}" style="background-image:url('${article.articleOfferedComment.commentAuthorThumbnailURL}')"></div>
-                                        <#if article.articleOfferedComment.commentAnonymous == 0></a></#if>
-                                    <#else>
+                                    <#if article.articleOfferedComment.commentAnonymous == 0>
+                                <a rel="nofollow" href="${servePath}/member/${article.articleOfferedComment.commentAuthorName}"></#if>
                                     <div class="avatar tooltipped tooltipped-se"
                                          aria-label="${article.articleOfferedComment.commentAuthorName}" style="background-image:url('${article.articleOfferedComment.commentAuthorThumbnailURL}')"></div>
-                                    </#if>
+                                    <#if article.articleOfferedComment.commentAnonymous == 0></a></#if>
                                     <div class="fn-flex-1">
                                         <div class="fn-clear comment-info ft-smaller">
                                             <span class="fn-left">
-                                                <#if !article.articleOfferedComment.fromClient>
-                                                    <#if article.articleOfferedComment.commentAnonymous == 0><a rel="nofollow" href="${servePath}/member/${article.articleOfferedComment.commentAuthorName}" class="ft-gray"></#if><span class="ft-gray">${article.articleOfferedComment.commentAuthorName}</span><#if article.articleOfferedComment.commentAnonymous == 0></a></#if>
-                                                <#else><span class="ft-gray">${article.articleOfferedComment.commentAuthorName}</span>
-                                                </#if>
+                                                <#if article.articleOfferedComment.commentAnonymous == 0><a rel="nofollow" href="${servePath}/member/${article.articleOfferedComment.commentAuthorName}" class="ft-gray"></#if><span class="ft-gray">${article.articleOfferedComment.commentAuthorName}</span><#if article.articleOfferedComment.commentAnonymous == 0></a></#if>
                                                 <span class="ft-fade">• ${article.articleOfferedComment.timeAgo}</span>
 
                                                 <#if article.articleOfferedComment.rewardedCnt gt 0>
@@ -241,23 +230,15 @@
                         <#list article.articleNiceComments as comment>
                             <li>
                                 <div class="fn-flex">
-                                    <#if !comment.fromClient>
                                     <#if comment.commentAnonymous == 0>
                                     <a rel="nofollow" href="${servePath}/member/${comment.commentAuthorName}"></#if>
                                         <div class="avatar tooltipped tooltipped-se"
                                              aria-label="${comment.commentAuthorName}" style="background-image:url('${comment.commentAuthorThumbnailURL}')"></div>
                                     <#if comment.commentAnonymous == 0></a></#if>
-                                    <#else>
-                                    <div class="avatar tooltipped tooltipped-se"
-                                         aria-label="${comment.commentAuthorName}" style="background-image:url('${comment.commentAuthorThumbnailURL}')"></div>
-                                    </#if>
                                     <div class="fn-flex-1">
                                         <div class="fn-clear comment-info ft-smaller">
                                             <span class="fn-left">
-                                                <#if !comment.fromClient>
                                                 <#if comment.commentAnonymous == 0><a rel="nofollow" href="${servePath}/member/${comment.commentAuthorName}" class="ft-gray"></#if><span class="ft-gray">${comment.commentAuthorName}</span><#if comment.commentAnonymous == 0></a></#if>
-                                                <#else><span class="ft-gray">${comment.commentAuthorName}</span>
-                                                </#if>
                                                 <span class="ft-fade">• ${comment.timeAgo}</span>
 
                                                 <#if comment.rewardedCnt gt 0>
@@ -368,7 +349,7 @@
                     <div class="module-header">
                         <h2>
                         ${sponsorLabel}
-                            <a href="https://naoowa.cn/article/1533084672753" class="fn-right ft-13 ft-gray" target="_blank">${wantPutOnLabel}</a>
+                            <a href="https://hacpai.com/article/1460083956075" class="fn-right ft-13 ft-gray" target="_blank">${wantPutOnLabel}</a>
                         </h2>
                     </div>
                     <div class="module-panel ad fn-clear">

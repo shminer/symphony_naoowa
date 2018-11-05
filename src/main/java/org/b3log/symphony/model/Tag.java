@@ -18,9 +18,7 @@
 package org.b3log.symphony.model;
 
 import org.apache.commons.lang.StringUtils;
-import org.b3log.latke.ioc.LatkeBeanManager;
-import org.b3log.latke.ioc.LatkeBeanManagerImpl;
-import org.b3log.latke.ioc.Lifecycle;
+import org.b3log.latke.ioc.BeanManager;
 import org.b3log.latke.util.Strings;
 import org.b3log.symphony.cache.TagCache;
 import org.b3log.symphony.service.ShortLinkQueryService;
@@ -39,7 +37,7 @@ import java.util.regex.Pattern;
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
  * @author Bill Ho
  * @author <a href="http://vanessa.b3log.org">Liyuan Li</a>
- * @version 1.17.0.2, Jul 19, 2018
+ * @version 1.18.0.0, Aug 30, 2018
  * @since 0.2.0
  */
 public final class Tag {
@@ -134,6 +132,16 @@ public final class Tag {
      */
     public static final String TAG_RANDOM_DOUBLE = "tagRandomDouble";
 
+    /**
+     * Key of tag ad.
+     */
+    public static final String TAG_AD = "tagAd";
+
+    /**
+     * Key of tag show side ad.
+     */
+    public static final String TAG_SHOW_SIDE_AD = "tagShowSideAd";
+
     //// Transient ////
     /**
      * Key of tag domains.
@@ -164,11 +172,6 @@ public final class Tag {
      * Key of tag creator thumbnail URL.
      */
     public static final String TAG_T_CREATOR_THUMBNAIL_URL = "tagCreatorThumbnailURL";
-
-    /**
-     * Key of tag creator thumbnail update time.
-     */
-    public static final String TAG_T_CREATOR_THUMBNAIL_UPDATE_TIME = "tagCreatorThumbnailUpdateTime";
 
     /**
      * Key of tag creator name.
@@ -441,7 +444,7 @@ public final class Tag {
      * @return normalized title
      */
     private static String normalize(final String title) {
-        final TagCache cache = LatkeBeanManagerImpl.getInstance().getReference(TagCache.class);
+        final TagCache cache = BeanManager.getInstance().getReference(TagCache.class);
         final List<JSONObject> iconTags = cache.getIconTags(Integer.MAX_VALUE);
         Collections.sort(iconTags, (t1, t2) -> {
             final String u1Title = t1.optString(Tag.TAG_T_TITLE_LOWER_CASE);
@@ -502,7 +505,7 @@ public final class Tag {
         String description = tag.optString(Tag.TAG_DESCRIPTION);
         String descriptionText = tag.optString(Tag.TAG_TITLE);
         if (StringUtils.isNotBlank(description)) {
-            final LatkeBeanManager beanManager = Lifecycle.getBeanManager();
+            final BeanManager beanManager = BeanManager.getInstance();
             final ShortLinkQueryService shortLinkQueryService = beanManager.getReference(ShortLinkQueryService.class);
 
             description = shortLinkQueryService.linkTag(description);

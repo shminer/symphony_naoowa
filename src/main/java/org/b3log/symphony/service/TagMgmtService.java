@@ -18,7 +18,7 @@
 package org.b3log.symphony.service;
 
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.User;
@@ -29,6 +29,7 @@ import org.b3log.latke.repository.annotation.Transactional;
 import org.b3log.latke.service.LangPropsService;
 import org.b3log.latke.service.ServiceException;
 import org.b3log.latke.service.annotation.Service;
+import org.b3log.latke.util.URLs;
 import org.b3log.symphony.cache.DomainCache;
 import org.b3log.symphony.cache.TagCache;
 import org.b3log.symphony.model.Common;
@@ -36,7 +37,6 @@ import org.b3log.symphony.model.Option;
 import org.b3log.symphony.model.Tag;
 import org.b3log.symphony.model.UserExt;
 import org.b3log.symphony.repository.*;
-import org.b3log.symphony.util.URLs;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -95,12 +95,6 @@ public class TagMgmtService {
     private DomainTagRepository domainTagRepository;
 
     /**
-     * Tag-User-Link repository.
-     */
-    @Inject
-    private TagUserLinkRepository tagUserLinkRepository;
-
-    /**
      * Language service.
      */
     @Inject
@@ -136,8 +130,7 @@ public class TagMgmtService {
                 if (0 == tag.optInt(Tag.TAG_REFERENCE_CNT) // article ref cnt
                         && 0 == domainTagRepository.getByTagId(tagId, 1, Integer.MAX_VALUE)
                         .optJSONArray(Keys.RESULTS).length() // domainTagRefCnt
-                        && 0 == tagUserLinkRepository.countTagLink(tagId) // tagUserLinkRefCnt
-                        ) {
+                ) {
                     final JSONArray userTagRels = userTagRepository.getByTagId(tagId, 1, Integer.MAX_VALUE)
                             .optJSONArray(Keys.RESULTS);
                     if (1 == userTagRels.length()
@@ -204,6 +197,8 @@ public class TagMgmtService {
             tag.put(Tag.TAG_SEO_KEYWORDS, tagTitle);
             tag.put(Tag.TAG_SEO_DESC, "");
             tag.put(Tag.TAG_RANDOM_DOUBLE, Math.random());
+            tag.put(Tag.TAG_AD, "");
+            tag.put(Tag.TAG_SHOW_SIDE_AD, 0);
 
             ret = tagRepository.add(tag);
             tag.put(Keys.OBJECT_ID, ret);

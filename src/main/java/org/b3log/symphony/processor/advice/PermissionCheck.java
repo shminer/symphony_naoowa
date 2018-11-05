@@ -18,9 +18,8 @@
 package org.b3log.symphony.processor.advice;
 
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
-import org.b3log.latke.ioc.inject.Named;
-import org.b3log.latke.ioc.inject.Singleton;
+import org.b3log.latke.ioc.Inject;
+import org.b3log.latke.ioc.Singleton;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.User;
@@ -32,6 +31,7 @@ import org.b3log.latke.servlet.advice.RequestProcessAdviceException;
 import org.b3log.latke.servlet.handler.MatchResult;
 import org.b3log.latke.servlet.handler.RequestDispatchHandler;
 import org.b3log.latke.util.Stopwatchs;
+import org.b3log.symphony.model.Common;
 import org.b3log.symphony.model.Permission;
 import org.b3log.symphony.model.Role;
 import org.b3log.symphony.service.RoleQueryService;
@@ -47,10 +47,9 @@ import java.util.*;
  * Permission check.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.0.1.0, May 1, 2018
+ * @version 1.0.1.1, Oct 16, 2018
  * @since 1.8.0
  */
-@Named
 @Singleton
 public class PermissionCheck extends BeforeRequestProcessAdvice {
 
@@ -71,10 +70,10 @@ public class PermissionCheck extends BeforeRequestProcessAdvice {
         // Loads permission URL rules
         final String prefix = "permission.rule.url.";
 
-        final Set<String> keys = Symphonys.CFG.keySet();
+        final Set<String> keys = Symphonys.CFG.stringPropertyNames();
         for (final String key : keys) {
             if (key.startsWith(prefix)) {
-                final String value = Symphonys.CFG.getString(key);
+                final String value = Symphonys.CFG.getProperty(key);
                 final Set<String> permissions = new HashSet<>(Arrays.asList(value.split(",")));
 
                 URL_PERMISSION_RULES.put(key, permissions);
@@ -109,8 +108,7 @@ public class PermissionCheck extends BeforeRequestProcessAdvice {
             final String method = request.getMethod();
             String rule = prefix;
 
-            final RequestDispatchHandler requestDispatchHandler
-                    = (RequestDispatchHandler) DispatcherServlet.SYS_HANDLER.get(2 /* DispatcherServlet#L69 */);
+            final RequestDispatchHandler requestDispatchHandler = (RequestDispatchHandler) DispatcherServlet.HANDLERS.get(2);
 
             try {
                 final Method doMatch = RequestDispatchHandler.class.getDeclaredMethod("doMatch",
@@ -130,7 +128,7 @@ public class PermissionCheck extends BeforeRequestProcessAdvice {
                 return;
             }
 
-            final JSONObject user = (JSONObject) request.getAttribute(User.USER);
+            final JSONObject user = (JSONObject) request.getAttribute(Common.CURRENT_USER);
             final String roleId = null != user ? user.optString(User.USER_ROLE) : Role.ROLE_ID_C_VISITOR;
             final Set<String> grantPermissions = roleQueryService.getPermissions(roleId);
 

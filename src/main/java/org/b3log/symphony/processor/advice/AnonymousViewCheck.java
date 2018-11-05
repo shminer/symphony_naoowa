@@ -20,17 +20,16 @@ package org.b3log.symphony.processor.advice;
 import org.apache.commons.lang.StringUtils;
 import org.b3log.latke.Keys;
 import org.b3log.latke.Latkes;
-import org.b3log.latke.ioc.inject.Inject;
-import org.b3log.latke.ioc.inject.Named;
-import org.b3log.latke.ioc.inject.Singleton;
+import org.b3log.latke.ioc.Inject;
+import org.b3log.latke.ioc.Singleton;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.repository.RepositoryException;
-import org.b3log.latke.service.ServiceException;
 import org.b3log.latke.servlet.HTTPRequestContext;
 import org.b3log.latke.servlet.advice.BeforeRequestProcessAdvice;
 import org.b3log.latke.servlet.advice.RequestProcessAdviceException;
 import org.b3log.latke.util.AntPathMatcher;
+import org.b3log.latke.util.URLs;
 import org.b3log.symphony.model.Article;
 import org.b3log.symphony.model.Common;
 import org.b3log.symphony.model.Option;
@@ -51,10 +50,9 @@ import java.util.Map;
  * Anonymous view check.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.3.1.6, Jun 2, 2018
+ * @version 1.3.2.1, Oct 21, 2018
  * @since 1.6.0
  */
-@Named
 @Singleton
 public class AnonymousViewCheck extends BeforeRequestProcessAdvice {
 
@@ -116,15 +114,6 @@ public class AnonymousViewCheck extends BeforeRequestProcessAdvice {
     @Override
     public void doAdvice(final HTTPRequestContext context, final Map<String, Object> args) throws RequestProcessAdviceException {
         final HttpServletRequest request = context.getRequest();
-
-        if ((Boolean) request.getAttribute(Keys.HttpRequest.IS_SEARCH_ENGINE_BOT)) {
-            return;
-        }
-
-        if ((Boolean) request.getAttribute(Common.IS_MOBILE)) { // Allow anonymous view for mobile users
-            return;
-        }
-
         final String requestURI = request.getRequestURI();
 
         final String[] skips = Symphonys.get("anonymousViewSkips").split(",");
@@ -152,13 +141,12 @@ public class AnonymousViewCheck extends BeforeRequestProcessAdvice {
                 }
 
                 if (Article.ARTICLE_ANONYMOUS_VIEW_C_NOT_ALLOW == article.optInt(Article.ARTICLE_ANONYMOUS_VIEW)
-                        && null == userQueryService.getCurrentUser(request)
-                        && !userMgmtService.tryLogInWithCookie(request, context.getResponse())) {
+                        && null == request.getAttribute(Common.CURRENT_USER)) {
                     throw new RequestProcessAdviceException(exception401);
                 } else if (Article.ARTICLE_ANONYMOUS_VIEW_C_ALLOW == article.optInt(Article.ARTICLE_ANONYMOUS_VIEW)) {
                     return;
                 }
-            } catch (final RepositoryException | ServiceException e) {
+            } catch (final RepositoryException e) {
                 LOGGER.log(Level.ERROR, "Get article [id=" + articleId + "] failed", e);
 
                 throw new RequestProcessAdviceException(exception404);
@@ -169,15 +157,15 @@ public class AnonymousViewCheck extends BeforeRequestProcessAdvice {
             // Check if admin allow to anonymous view
             final JSONObject option = optionQueryService.getOption(Option.ID_C_MISC_ALLOW_ANONYMOUS_VIEW);
             if (!"0".equals(option.optString(Option.OPTION_VALUE))) {
-                final JSONObject currentUser = userQueryService.getCurrentUser(request);
+                final JSONObject currentUser = (JSONObject) request.getAttribute(Common.CURRENT_USER);
 
                 // https://github.com/b3log/symphony/issues/373
                 final String cookieNameVisits = "anonymous-visits";
                 final Cookie visitsCookie = getCookie(request, cookieNameVisits);
 
-                if (null == currentUser && !userMgmtService.tryLogInWithCookie(request, context.getResponse())) {
+                if (null == currentUser) {
                     if (null != visitsCookie) {
-                        final JSONArray uris = new JSONArray(visitsCookie.getValue());
+                        final JSONArray uris = new JSONArray(URLs.decode(visitsCookie.getValue()));
                         for (int i = 0; i < uris.length(); i++) {
                             final String uri = uris.getString(i);
                             if (uri.equals(requestURI)) {
@@ -190,14 +178,13 @@ public class AnonymousViewCheck extends BeforeRequestProcessAdvice {
                             throw new RequestProcessAdviceException(exception401);
                         }
 
-                        addCookie(context.getResponse(), cookieNameVisits, uris.toString());
+                        addCookie(context.getResponse(), cookieNameVisits, URLs.encode(uris.toString()));
 
                         return;
                     } else {
                         final JSONArray uris = new JSONArray();
                         uris.put(requestURI);
-
-                        addCookie(context.getResponse(), cookieNameVisits, uris.toString());
+                        addCookie(context.getResponse(), cookieNameVisits, URLs.encode(uris.toString()));
 
                         return;
                     }
@@ -211,6 +198,8 @@ public class AnonymousViewCheck extends BeforeRequestProcessAdvice {
                     }
                 }
             }
+        } catch (final RequestProcessAdviceException e) {
+            throw e;
         } catch (final Exception e) {
             LOGGER.log(Level.ERROR, "Anonymous view check failed: " + e.getMessage());
 

@@ -21,10 +21,8 @@ import org.apache.commons.lang.time.DateUtils;
 import org.b3log.latke.Keys;
 import org.b3log.latke.cache.Cache;
 import org.b3log.latke.cache.CacheFactory;
-import org.b3log.latke.ioc.LatkeBeanManager;
-import org.b3log.latke.ioc.LatkeBeanManagerImpl;
-import org.b3log.latke.ioc.inject.Named;
-import org.b3log.latke.ioc.inject.Singleton;
+import org.b3log.latke.ioc.BeanManager;
+import org.b3log.latke.ioc.Singleton;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.repository.*;
@@ -49,10 +47,9 @@ import java.util.List;
  * Article cache.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.3.0.3, Jun 11, 2018
+ * @version 1.3.1.1, Oct 23, 2018
  * @since 1.4.0
  */
-@Named
 @Singleton
 public class ArticleCache {
 
@@ -102,14 +99,14 @@ public class ArticleCache {
             return Collections.emptyList();
         }
 
-        return new ArrayList<>(SIDE_HOT_ARTICLES);
+        return JSONs.clone(SIDE_HOT_ARTICLES);
     }
 
     /**
      * Loads side hot articles.
      */
     public void loadSideHotArticles() {
-        final LatkeBeanManager beanManager = LatkeBeanManagerImpl.getInstance();
+        final BeanManager beanManager = BeanManager.getInstance();
         final ArticleRepository articleRepository = beanManager.getReference(ArticleRepository.class);
         final ArticleQueryService articleQueryService = beanManager.getReference(ArticleQueryService.class);
 
@@ -127,7 +124,8 @@ public class ArticleCache {
             query.setFilter(new CompositeFilter(CompositeFilterOperator.AND, filters)).
                     addProjection(Article.ARTICLE_TITLE, String.class).
                     addProjection(Article.ARTICLE_PERMALINK, String.class).
-                    addProjection(Article.ARTICLE_AUTHOR_ID, String.class);
+                    addProjection(Article.ARTICLE_AUTHOR_ID, String.class).
+                    addProjection(Article.ARTICLE_ANONYMOUS, Integer.class);
 
             final JSONObject result = articleRepository.get(query);
             final List<JSONObject> articles = CollectionUtils.jsonArrayToList(result.optJSONArray(Keys.RESULTS));
@@ -149,23 +147,36 @@ public class ArticleCache {
      */
     public List<JSONObject> getSideRandomArticles() {
         int size = Symphonys.getInt("sideRandomArticlesCnt");
+        if (1 > size) {
+            return Collections.emptyList();
+        }
+
+        if (SIDE_RANDOM_ARTICLES.isEmpty()) {
+            return Collections.emptyList();
+        }
+
         size = size > SIDE_RANDOM_ARTICLES.size() ? SIDE_RANDOM_ARTICLES.size() : size;
         Collections.shuffle(SIDE_RANDOM_ARTICLES);
 
-        return new ArrayList<>(SIDE_RANDOM_ARTICLES.subList(0, size));
+        return JSONs.clone(SIDE_RANDOM_ARTICLES.subList(0, size));
     }
 
     /**
      * Loads side random articles.
      */
     public void loadSideRandomArticles() {
-        final LatkeBeanManager beanManager = LatkeBeanManagerImpl.getInstance();
+        final int size = Symphonys.getInt("sideRandomArticlesCnt");
+        if (1 > size) {
+            return;
+        }
+
+        final BeanManager beanManager = BeanManager.getInstance();
         final ArticleRepository articleRepository = beanManager.getReference(ArticleRepository.class);
         final ArticleQueryService articleQueryService = beanManager.getReference(ArticleQueryService.class);
 
         Stopwatchs.start("Load side random articles");
         try {
-            final List<JSONObject> articles = articleRepository.getRandomly(Symphonys.getInt("sideRandomArticlesCnt") * 5);
+            final List<JSONObject> articles = articleRepository.getRandomly(size * 5);
             articleQueryService.organizeArticles(UserExt.USER_AVATAR_VIEW_MODE_C_STATIC, articles);
 
             SIDE_RANDOM_ARTICLES.clear();
@@ -202,14 +213,14 @@ public class ArticleCache {
             return Collections.emptyList();
         }
 
-        return new ArrayList<>(PERFECT_ARTICLES);
+        return JSONs.clone(PERFECT_ARTICLES);
     }
 
     /**
      * Loads perfect articles.
      */
     public void loadPerfectArticles() {
-        final LatkeBeanManager beanManager = LatkeBeanManagerImpl.getInstance();
+        final BeanManager beanManager = BeanManager.getInstance();
         final ArticleRepository articleRepository = beanManager.getReference(ArticleRepository.class);
         final ArticleQueryService articleQueryService = beanManager.getReference(ArticleQueryService.class);
 
@@ -232,7 +243,6 @@ public class ArticleCache {
                     addProjection(Article.ARTICLE_PERMALINK, String.class).
                     addProjection(Article.ARTICLE_TAGS, String.class).
                     addProjection(Article.ARTICLE_LATEST_CMTER_NAME, String.class).
-                    addProjection(Article.ARTICLE_SYNC_TO_CLIENT, Boolean.class).
                     addProjection(Article.ARTICLE_COMMENT_CNT, Integer.class).
                     addProjection(Article.ARTICLE_ANONYMOUS, Integer.class).
                     addProjection(Article.ARTICLE_PERFECT, Integer.class).

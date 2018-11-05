@@ -18,7 +18,7 @@
 package org.b3log.symphony.service;
 
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.repository.*;
@@ -103,8 +103,8 @@ public class VoteQueryService {
     /**
      * Determines whether the specified data dose belong to the specified user.
      *
-     * @param userId the specified user id
-     * @param dataId the specified data id
+     * @param userId   the specified user id
+     * @param dataId   the specified data id
      * @param dataType the specified data type
      * @return {@code true} if it belongs to the user, otherwise returns {@code false}
      */

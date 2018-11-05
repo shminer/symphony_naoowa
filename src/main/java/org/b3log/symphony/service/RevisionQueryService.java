@@ -18,7 +18,7 @@
 package org.b3log.symphony.service;
 
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.repository.*;
@@ -111,6 +111,7 @@ public class RevisionQueryService {
                 data.put(Article.ARTICLE_TITLE, articleTitle);
 
                 String articleContent = data.optString(Article.ARTICLE_CONTENT);
+                // articleContent = Markdowns.toHTML(articleContent); https://hacpai.com/article/1490233597586
                 articleContent = articleContent.replace("\n", "_esc_br_");
                 articleContent = Markdowns.clean(articleContent, "");
                 articleContent = articleContent.replace("_esc_br_", "\n");

@@ -20,7 +20,7 @@
  *
  * @author <a href="http://vanessa.b3log.org">Liyuan Li</a>
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 2.33.0.0, Jul 5, 2018
+ * @version 2.33.1.1, Aug 20, 2018
  */
 
 @import "variables";
@@ -587,6 +587,10 @@ label.cmt-anonymous {
     }
   }
 }
+
+#reportDialog {
+  display: none;
+}
 /* end article */
 
 /* start article list */
@@ -1055,7 +1059,9 @@ code .dec {
 
 /* start chat room */
 .chat-room .online-cnt {
-  margin-top: 11px;
+  line-height: 33px;
+  margin-right: 10px;
+  color: $gray;
 }
 
 .chat-room .list {
@@ -1269,7 +1275,6 @@ code .dec {
     background-color: rgba(0, 0, 0, .02);
     padding-top: 20px;
     margin-top: 20px;
-    margin-right: -2px;
   }
 
   .metro-border > div {

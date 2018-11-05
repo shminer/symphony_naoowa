@@ -19,7 +19,7 @@ package org.b3log.symphony.service;
 
 import org.b3log.latke.Keys;
 import org.b3log.latke.Latkes;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.Pagination;
@@ -120,6 +120,12 @@ public class NotificationQueryService {
      */
     @Inject
     private RoleQueryService roleQueryService;
+
+    /**
+     * Tag query service.
+     */
+    @Inject
+    private TagQueryService tagQueryService;
 
     /**
      * Gets a notification by the specified id.
@@ -740,8 +746,6 @@ public class NotificationQueryService {
                 commentedNotification.put(Comment.COMMENT_CONTENT, comment.optString(Comment.COMMENT_CONTENT));
                 commentedNotification.put(Comment.COMMENT_T_AUTHOR_THUMBNAIL_URL,
                         comment.optString(Comment.COMMENT_T_AUTHOR_THUMBNAIL_URL));
-                commentedNotification.put(Common.THUMBNAIL_UPDATE_TIME, comment.optJSONObject(Comment.COMMENT_T_COMMENTER).
-                        optLong(UserExt.USER_UPDATE_TIME));
                 commentedNotification.put(Comment.COMMENT_T_ARTICLE_TITLE, Emotions.convert(articleTitle));
                 commentedNotification.put(Comment.COMMENT_T_ARTICLE_TYPE, articleType);
                 commentedNotification.put(Comment.COMMENT_CREATE_TIME, comment.opt(Comment.COMMENT_CREATE_TIME));
@@ -833,7 +837,6 @@ public class NotificationQueryService {
                 replyNotification.put(Comment.COMMENT_T_AUTHOR_NAME, comment.optString(Comment.COMMENT_T_AUTHOR_NAME));
                 replyNotification.put(Comment.COMMENT_CONTENT, comment.optString(Comment.COMMENT_CONTENT));
                 replyNotification.put(Comment.COMMENT_T_AUTHOR_THUMBNAIL_URL, comment.optString(Comment.COMMENT_T_AUTHOR_THUMBNAIL_URL));
-                replyNotification.put(Common.THUMBNAIL_UPDATE_TIME, comment.optJSONObject(Comment.COMMENT_T_COMMENTER).optLong(UserExt.USER_UPDATE_TIME));
                 replyNotification.put(Comment.COMMENT_T_ARTICLE_TITLE, Emotions.convert(articleTitle));
                 replyNotification.put(Comment.COMMENT_T_ARTICLE_TYPE, articleType);
                 replyNotification.put(Comment.COMMENT_SHARP_URL, comment.optString(Comment.COMMENT_SHARP_URL));
@@ -958,8 +961,6 @@ public class NotificationQueryService {
                             atNotification.put(Common.CONTENT, comment.optString(Comment.COMMENT_CONTENT));
                             atNotification.put(Common.THUMBNAIL_URL,
                                     comment.optString(Comment.COMMENT_T_AUTHOR_THUMBNAIL_URL));
-                            atNotification.put(Common.THUMBNAIL_UPDATE_TIME, comment.optJSONObject(Comment.COMMENT_T_COMMENTER).
-                                    optLong(UserExt.USER_UPDATE_TIME));
                             atNotification.put(Article.ARTICLE_TITLE, Emotions.convert(articleTitle));
                             atNotification.put(Article.ARTICLE_TYPE, articleType);
                             atNotification.put(Common.URL, comment.optString(Comment.COMMENT_SHARP_URL));
@@ -980,7 +981,6 @@ public class NotificationQueryService {
                             atNotification.put(Common.CONTENT, "");
                             final String thumbnailURL = avatarQueryService.getAvatarURLByUser(avatarViewMode, articleAuthor, "48");
                             atNotification.put(Common.THUMBNAIL_URL, thumbnailURL);
-                            atNotification.put(Common.THUMBNAIL_UPDATE_TIME, articleAuthor.optLong(UserExt.USER_UPDATE_TIME));
                             atNotification.put(Article.ARTICLE_TITLE, Emotions.convert(article.optString(Article.ARTICLE_TITLE)));
                             atNotification.put(Article.ARTICLE_TYPE, article.optInt(Article.ARTICLE_TYPE));
                             atNotification.put(Common.URL, Latkes.getServePath() + article.optString(Article.ARTICLE_PERMALINK));
@@ -989,7 +989,7 @@ public class NotificationQueryService {
 
                             final String tagsStr = article.optString(Article.ARTICLE_TAGS);
                             atNotification.put(Article.ARTICLE_TAGS, tagsStr);
-                            final List<JSONObject> tags = buildTagObjs(tagsStr);
+                            final List<JSONObject> tags = tagQueryService.buildTagObjs(tagsStr);
                             atNotification.put(Article.ARTICLE_T_TAG_OBJS, (Object) tags);
 
                             atNotification.put(Article.ARTICLE_COMMENT_CNT, article.optInt(Article.ARTICLE_COMMENT_CNT));
@@ -1027,7 +1027,6 @@ public class NotificationQueryService {
 
                         final String thumbnailURL = avatarQueryService.getAvatarURLByUser(avatarViewMode, followerUser, "48");
                         atNotification.put(Common.THUMBNAIL_URL, thumbnailURL);
-                        atNotification.put(Common.THUMBNAIL_UPDATE_TIME, followerUser.optLong(UserExt.USER_UPDATE_TIME));
 
                         final String userLink = UserExt.getUserLink(followerUserName);
                         description = description.replace("{user}", userLink);
@@ -1052,7 +1051,6 @@ public class NotificationQueryService {
                         atNotification.put(User.USER_NAME, voterUserName);
                         String thumbnailURLVote = avatarQueryService.getAvatarURLByUser(avatarViewMode, cmtVoter, "48");
                         atNotification.put(Common.THUMBNAIL_URL, thumbnailURLVote);
-                        atNotification.put(Common.THUMBNAIL_UPDATE_TIME, cmtVoter.optLong(UserExt.USER_UPDATE_TIME));
 
                         JSONObject articleVote = null;
                         if (Notification.DATA_TYPE_C_COMMENT_VOTE_UP == dataType) {
@@ -1104,7 +1102,6 @@ public class NotificationQueryService {
                         atNotification.put(User.USER_NAME, voterUserName);
                         thumbnailURLVote = avatarQueryService.getAvatarURLByUser(avatarViewMode, voter, "48");
                         atNotification.put(Common.THUMBNAIL_URL, thumbnailURLVote);
-                        atNotification.put(Common.THUMBNAIL_UPDATE_TIME, voter.optLong(UserExt.USER_UPDATE_TIME));
 
                         JSONObject voteArticle = null;
                         if (Notification.DATA_TYPE_C_ARTICLE_VOTE_UP == dataType) {
@@ -1231,8 +1228,6 @@ public class NotificationQueryService {
                         followingNotification.put(Common.CONTENT, comment.optString(Comment.COMMENT_CONTENT));
                         followingNotification.put(Common.THUMBNAIL_URL,
                                 comment.optString(Comment.COMMENT_T_AUTHOR_THUMBNAIL_URL));
-                        followingNotification.put(Common.THUMBNAIL_UPDATE_TIME, comment.optJSONObject(Comment.COMMENT_T_COMMENTER).
-                                optLong(UserExt.USER_UPDATE_TIME));
                         followingNotification.put(Article.ARTICLE_TITLE, Emotions.convert(articleTitle));
                         followingNotification.put(Article.ARTICLE_TYPE, articleType);
                         followingNotification.put(Common.URL, comment.optString(Comment.COMMENT_SHARP_URL));
@@ -1256,7 +1251,6 @@ public class NotificationQueryService {
                         followingNotification.put(Common.CONTENT, "");
                         final String thumbnailURL = avatarQueryService.getAvatarURLByUser(avatarViewMode, articleAuthor, "48");
                         followingNotification.put(Common.THUMBNAIL_URL, thumbnailURL);
-                        followingNotification.put(Common.THUMBNAIL_UPDATE_TIME, articleAuthor.optLong(UserExt.USER_UPDATE_TIME));
                         followingNotification.put(Article.ARTICLE_TITLE, Emotions.convert(article.optString(Article.ARTICLE_TITLE)));
                         followingNotification.put(Article.ARTICLE_TYPE, article.optInt(Article.ARTICLE_TYPE));
                         followingNotification.put(Common.URL, Latkes.getServePath() + article.optString(Article.ARTICLE_PERMALINK));
@@ -1266,7 +1260,7 @@ public class NotificationQueryService {
 
                         final String tagsStr = article.optString(Article.ARTICLE_TAGS);
                         followingNotification.put(Article.ARTICLE_TAGS, tagsStr);
-                        final List<JSONObject> tags = buildTagObjs(tagsStr);
+                        final List<JSONObject> tags = tagQueryService.buildTagObjs(tagsStr);
                         followingNotification.put(Article.ARTICLE_T_TAG_OBJS, (Object) tags);
 
                         followingNotification.put(Article.ARTICLE_COMMENT_CNT, article.optInt(Article.ARTICLE_COMMENT_CNT));
@@ -1377,7 +1371,6 @@ public class NotificationQueryService {
                 broadcastNotification.put(Common.CONTENT, "");
                 broadcastNotification.put(Common.THUMBNAIL_URL,
                         avatarQueryService.getAvatarURLByUser(avatarViewMode, author, "48"));
-                broadcastNotification.put(Common.THUMBNAIL_UPDATE_TIME, author.optLong(UserExt.USER_UPDATE_TIME));
                 broadcastNotification.put(Article.ARTICLE_TITLE, Emotions.convert(articleTitle));
                 broadcastNotification.put(Common.URL, Latkes.getServePath() + article.optString(Article.ARTICLE_PERMALINK));
                 broadcastNotification.put(Common.CREATE_TIME, new Date(article.optLong(Article.ARTICLE_CREATE_TIME)));
@@ -1388,7 +1381,7 @@ public class NotificationQueryService {
 
                 final String tagsStr = article.optString(Article.ARTICLE_TAGS);
                 broadcastNotification.put(Article.ARTICLE_TAGS, tagsStr);
-                final List<JSONObject> tags = buildTagObjs(tagsStr);
+                final List<JSONObject> tags = tagQueryService.buildTagObjs(tagsStr);
                 broadcastNotification.put(Article.ARTICLE_T_TAG_OBJS, (Object) tags);
 
                 broadcastNotification.put(Article.ARTICLE_COMMENT_CNT, article.optInt(Article.ARTICLE_COMMENT_CNT));
@@ -1403,34 +1396,5 @@ public class NotificationQueryService {
 
             throw new ServiceException(e);
         }
-    }
-
-    /**
-     * Builds tag objects with the specified tags string.
-     *
-     * @param tagsStr the specified tags string
-     * @return tag objects
-     */
-    private List<JSONObject> buildTagObjs(final String tagsStr) {
-        final List<JSONObject> ret = new ArrayList<>();
-
-        final String[] tagTitles = tagsStr.split(",");
-        for (final String tagTitle : tagTitles) {
-            final JSONObject tag = new JSONObject();
-            tag.put(Tag.TAG_TITLE, tagTitle);
-
-            final String uri = tagRepository.getURIByTitle(tagTitle);
-            if (null != uri) {
-                tag.put(Tag.TAG_URI, uri);
-            } else {
-                tag.put(Tag.TAG_URI, tagTitle);
-
-                tagRepository.getURIByTitle(tagTitle);
-            }
-
-            ret.add(tag);
-        }
-
-        return ret;
     }
 }

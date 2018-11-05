@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
  * Network utilities.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.0.2.0, Mar 2, 2017
+ * @version 1.0.2.1, Aug 2, 2018
  * @since 1.3.0
  */
 public final class Networks {
@@ -42,8 +42,7 @@ public final class Networks {
             return false;
         }
 
-        final String regex = "^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$";
-
+        final String regex = "^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$";
         final Pattern pattern = Pattern.compile(regex);
         final Matcher matcher = pattern.matcher(ip);
 

@@ -21,7 +21,7 @@ package org.b3log.symphony.model;
  * This class defines all article model relevant keys.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.32.0.0, Jun 19, 2018
+ * @version 1.32.0.2, Aug 4, 2018
  * @since 0.2.0
  */
 public final class Article {
@@ -127,21 +127,6 @@ public final class Article {
     public static final String ARTICLE_COMMENTABLE = "articleCommentable";
 
     /**
-     * Key of article sync to client.
-     */
-    public static final String ARTICLE_SYNC_TO_CLIENT = "syncWithSymphonyClient";
-
-    /**
-     * Key of client article id.
-     */
-    public static final String ARTICLE_CLIENT_ARTICLE_ID = "clientArticleId";
-
-    /**
-     * Key of client article permalink.
-     */
-    public static final String ARTICLE_CLIENT_ARTICLE_PERMALINK = "clientArticlePermalink";
-
-    /**
      * Key of article editor type.
      */
     public static final String ARTICLE_EDITOR_TYPE = "articleEditorType";
@@ -230,6 +215,11 @@ public final class Article {
      * Key of article push order. https://github.com/b3log/symphony/issues/537
      */
     public static final String ARTICLE_PUSH_ORDER = "articlePushOrder";
+
+    /**
+     * Key of article image1 URL. https://github.com/b3log/symphony/issues/705
+     */
+    public static final String ARTICLE_IMG1_URL = "articleImg1URL";
 
     //// Transient ////
     /**
@@ -351,11 +341,6 @@ public final class Article {
      * Key of article participant thumbnail URL.
      */
     public static final String ARTICLE_T_PARTICIPANT_THUMBNAIL_URL = "articleParticipantThumbnailURL";
-
-    /**
-     * Key of article participant thumbnail update time.
-     */
-    public static final String ARTICLE_T_PARTICIPANT_THUMBNAIL_UPDATE_TIME = "articleParticipantThumbnailUpdateTime";
 
     /**
      * Key of article participant URL.

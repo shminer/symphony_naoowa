@@ -18,13 +18,14 @@
 package org.b3log.symphony.processor;
 
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.Latkes;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Logger;
+import org.b3log.latke.repository.jdbc.util.Connections;
 import org.b3log.latke.servlet.HTTPRequestContext;
 import org.b3log.latke.servlet.HTTPRequestMethod;
 import org.b3log.latke.servlet.annotation.RequestProcessing;
 import org.b3log.latke.servlet.annotation.RequestProcessor;
-import org.b3log.symphony.SymphonyServletListener;
 import org.b3log.symphony.model.Common;
 import org.b3log.symphony.processor.channel.ArticleChannel;
 import org.b3log.symphony.processor.channel.ArticleListChannel;
@@ -43,7 +44,7 @@ import javax.servlet.http.HttpServletResponse;
  * </ul>
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.1.0.4, Apr 3, 2018
+ * @version 1.1.0.7, Sep 25, 2018
  * @since 1.3.0
  */
 @RequestProcessor
@@ -85,10 +86,13 @@ public class StatusProcessor {
         ret.put(Common.ONLINE_CHAT_CNT, ChatRoomChannel.SESSIONS.size());
         ret.put(Common.ARTICLE_CHANNEL_CNT, ArticleChannel.SESSIONS.size());
         ret.put(Common.ARTICLE_LIST_CHANNEL_CNT, ArticleListChannel.SESSIONS.size());
-
+        ret.put(Common.THREAD_CNT, Symphonys.getActiveThreadCount() + "/" + Symphonys.getMaxThreadCount());
+        ret.put(Common.DB_CONN_CNT, Connections.getActiveConnectionCount() + "/" + Connections.getTotalConnectionCount() + "/" + Connections.getMaxConnectionCount());
+        ret.put(Keys.Runtime.RUNTIME_CACHE, Latkes.getRuntimeCache().name());
+        ret.put(Keys.Runtime.RUNTIME_DATABASE, Latkes.getRuntimeDatabase().name());
+        ret.put(Keys.Runtime.RUNTIME_MODE, Latkes.getRuntimeMode().name());
         final JSONObject memory = new JSONObject();
         ret.put("memory", memory);
-
         final int mb = 1024 * 1024;
         final Runtime runtime = Runtime.getRuntime();
         memory.put("total", runtime.totalMemory() / mb);
@@ -96,7 +100,7 @@ public class StatusProcessor {
         memory.put("used", (runtime.totalMemory() - runtime.freeMemory()) / mb);
         memory.put("max", runtime.maxMemory() / mb);
 
-        LOGGER.info(ret.toString(SymphonyServletListener.JSON_PRINT_INDENT_FACTOR));
+        LOGGER.info(ret.toString(4));
         ret.put(Keys.STATUS_CODE, true);
     }
 }

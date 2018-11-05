@@ -18,9 +18,8 @@
 package org.b3log.symphony.processor;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.time.DateFormatUtils;
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.Pagination;
 import org.b3log.latke.model.User;
@@ -31,19 +30,18 @@ import org.b3log.latke.servlet.annotation.After;
 import org.b3log.latke.servlet.annotation.Before;
 import org.b3log.latke.servlet.annotation.RequestProcessing;
 import org.b3log.latke.servlet.annotation.RequestProcessor;
-import org.b3log.latke.servlet.renderer.freemarker.AbstractFreeMarkerRenderer;
+import org.b3log.latke.servlet.renderer.AbstractFreeMarkerRenderer;
 import org.b3log.latke.util.CollectionUtils;
 import org.b3log.latke.util.Paginator;
-import org.b3log.latke.util.Requests;
 import org.b3log.symphony.model.*;
-import org.b3log.symphony.processor.advice.*;
+import org.b3log.symphony.processor.advice.AnonymousViewCheck;
+import org.b3log.symphony.processor.advice.CSRFToken;
+import org.b3log.symphony.processor.advice.PermissionGrant;
+import org.b3log.symphony.processor.advice.UserBlockCheck;
 import org.b3log.symphony.processor.advice.stopwatch.StopwatchEndAdvice;
 import org.b3log.symphony.processor.advice.stopwatch.StopwatchStartAdvice;
-import org.b3log.symphony.processor.advice.validate.PointTransferValidation;
 import org.b3log.symphony.service.*;
 import org.b3log.symphony.util.Escapes;
-import org.b3log.symphony.util.Results;
-import org.b3log.symphony.util.Sessions;
 import org.b3log.symphony.util.Symphonys;
 import org.json.JSONObject;
 
@@ -65,19 +63,14 @@ import java.util.Map;
  * <li>User followers (/member/{userName}/followers), GET</li>
  * <li>User points (/member/{userName}/points), GET</li>
  * <li>User breezemoons (/member/{userName}/breezemoons), GET</li>
- * <li>Transfer point (/point/transfer), POST</li>
- * <li>Point buy invitecode (/point/buy-invitecode), POST</li>
  * <li>Lists usernames (/users/names), GET</li>
  * <li>Lists emotions (/users/emotions), GET</li>
- * <li>Exports posts(article/comment) to a file (/export/posts), POST</li>
- * <li>Queries invitecode state (/invitecode/state), GET</li>
- * <li>Shows link forge (/member/{userName}/forge/link), GET</li>
  * </ul>
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
  * @author <a href="http://zephyr.b3log.org">Zephyr</a>
  * @author <a href="http://vanessa.b3log.org">Liyuan Li</a>
- * @version 1.27.0.2, Jul 9, 2018
+ * @version 1.27.0.6, Sep 15, 2018
  * @since 0.2.0
  */
 @RequestProcessor
@@ -167,40 +160,16 @@ public class UserProcessor {
     private NotificationMgmtService notificationMgmtService;
 
     /**
-     * Post export service.
-     */
-    @Inject
-    private PostExportService postExportService;
-
-    /**
      * Option query service.
      */
     @Inject
     private OptionQueryService optionQueryService;
 
     /**
-     * Invitecode management service.
-     */
-    @Inject
-    private InvitecodeMgmtService invitecodeMgmtService;
-
-    /**
-     * Link forge query service.
-     */
-    @Inject
-    private LinkForgeQueryService linkForgeQueryService;
-
-    /**
      * Role query service.
      */
     @Inject
     private RoleQueryService roleQueryService;
-
-    /**
-     * Invitecode query service.
-     */
-    @Inject
-    private InvitecodeQueryService invitecodeQueryService;
 
     /**
      * Breezemoon query service.
@@ -226,7 +195,7 @@ public class UserProcessor {
 
         final AbstractFreeMarkerRenderer renderer = new SkinRenderer(request);
         context.setRenderer(renderer);
-        renderer.setTemplateName("/home/breezemoons.ftl");
+        renderer.setTemplateName("home/breezemoons.ftl");
         final Map<String, Object> dataModel = renderer.getDataModel();
         dataModelService.fillHeaderAndFooter(request, response, dataModel);
         final int pageNum = Paginator.getPage(request);
@@ -252,8 +221,6 @@ public class UserProcessor {
             dataModel.put(Common.IS_FOLLOWING, isFollowing);
         }
 
-        user.put(UserExt.USER_T_CREATE_TIME, new Date(user.getLong(Keys.OBJECT_ID)));
-
         final JSONObject result = breezemoonQueryService.getBreezemoons(avatarViewMode, currentUserId, followingId, pageNum, pageSize, windowSize);
         final List<JSONObject> bms = (List<JSONObject>) result.opt(Breezemoon.BREEZEMOONS);
         dataModel.put(Common.USER_HOME_BREEZEMOONS, bms);
@@ -277,153 +244,6 @@ public class UserProcessor {
     }
 
     /**
-     * Shows user link forge.
-     *
-     * @param context  the specified context
-     * @param request  the specified request
-     * @param response the specified response
-     * @param userName the specified user name
-     * @throws Exception exception
-     */
-    @RequestProcessing(value = "/member/{userName}/forge/link", method = HTTPRequestMethod.GET)
-    @Before(adviceClass = {StopwatchStartAdvice.class, UserBlockCheck.class})
-    @After(adviceClass = {PermissionGrant.class, StopwatchEndAdvice.class})
-    public void showLinkForge(final HTTPRequestContext context, final HttpServletRequest request,
-                              final HttpServletResponse response, final String userName) throws Exception {
-        final AbstractFreeMarkerRenderer renderer = new SkinRenderer(request);
-        context.setRenderer(renderer);
-        renderer.setTemplateName("/home/link-forge.ftl");
-        final Map<String, Object> dataModel = renderer.getDataModel();
-        dataModelService.fillHeaderAndFooter(request, response, dataModel);
-
-        final JSONObject user = (JSONObject) request.getAttribute(User.USER);
-        user.put(UserExt.USER_T_CREATE_TIME, new Date(user.getLong(Keys.OBJECT_ID)));
-        fillHomeUser(dataModel, user, roleQueryService);
-
-        final int avatarViewMode = (int) request.getAttribute(UserExt.USER_AVATAR_VIEW_MODE);
-        avatarQueryService.fillUserAvatarURL(avatarViewMode, user);
-
-        final String followingId = user.optString(Keys.OBJECT_ID);
-        dataModel.put(Follow.FOLLOWING_ID, followingId);
-
-        final boolean isLoggedIn = (Boolean) dataModel.get(Common.IS_LOGGED_IN);
-        if (isLoggedIn) {
-            final JSONObject currentUser = (JSONObject) dataModel.get(Common.CURRENT_USER);
-            final String followerId = currentUser.optString(Keys.OBJECT_ID);
-
-            final boolean isFollowing = followQueryService.isFollowing(followerId, followingId, Follow.FOLLOWING_TYPE_C_USER);
-            dataModel.put(Common.IS_FOLLOWING, isFollowing);
-        }
-
-        final List<JSONObject> tags = linkForgeQueryService.getUserForgedLinks(user.optString(Keys.OBJECT_ID));
-        dataModel.put(Tag.TAGS, (Object) tags);
-
-        dataModel.put(Common.TYPE, "linkForge");
-    }
-
-    /**
-     * Queries invitecode state.
-     *
-     * @param context  the specified context
-     * @param request  the specified request
-     * @param response the specified response
-     * @throws Exception exception
-     */
-    @RequestProcessing(value = "/invitecode/state", method = HTTPRequestMethod.POST)
-    @Before(adviceClass = {LoginCheck.class, CSRFCheck.class})
-    public void queryInvitecode(final HTTPRequestContext context, final HttpServletRequest request, final HttpServletResponse response)
-            throws Exception {
-        final JSONObject ret = Results.falseResult();
-        context.renderJSON(ret);
-
-        final JSONObject requestJSONObject = Requests.parseRequestJSONObject(request, context.getResponse());
-        String invitecode = requestJSONObject.optString(Invitecode.INVITECODE);
-        if (StringUtils.isBlank(invitecode)) {
-            ret.put(Keys.STATUS_CODE, -1);
-            ret.put(Keys.MSG, invitecode + " " + langPropsService.get("notFoundInvitecodeLabel"));
-
-            return;
-        }
-
-        invitecode = invitecode.trim();
-
-        final JSONObject result = invitecodeQueryService.getInvitecode(invitecode);
-
-        if (null == result) {
-            ret.put(Keys.STATUS_CODE, -1);
-            ret.put(Keys.MSG, langPropsService.get("notFoundInvitecodeLabel"));
-        } else {
-            final int status = result.optInt(Invitecode.STATUS);
-            ret.put(Keys.STATUS_CODE, status);
-
-            switch (status) {
-                case Invitecode.STATUS_C_USED:
-                    ret.put(Keys.MSG, langPropsService.get("invitecodeUsedLabel"));
-
-                    break;
-                case Invitecode.STATUS_C_UNUSED:
-                    String msg = langPropsService.get("invitecodeOkLabel");
-                    msg = msg.replace("${time}", DateFormatUtils.format(result.optLong(Keys.OBJECT_ID)
-                            + Symphonys.getLong("invitecode.expired"), "yyyy-MM-dd HH:mm"));
-
-                    ret.put(Keys.MSG, msg);
-
-                    break;
-                case Invitecode.STATUS_C_STOPUSE:
-                    ret.put(Keys.MSG, langPropsService.get("invitecodeStopLabel"));
-
-                    break;
-                default:
-                    ret.put(Keys.MSG, langPropsService.get("notFoundInvitecodeLabel"));
-            }
-        }
-    }
-
-    /**
-     * Point buy invitecode.
-     *
-     * @param context  the specified context
-     * @param request  the specified request
-     * @param response the specified response
-     * @throws Exception exception
-     */
-    @RequestProcessing(value = "/point/buy-invitecode", method = HTTPRequestMethod.POST)
-    @Before(adviceClass = {LoginCheck.class, CSRFCheck.class, PermissionCheck.class})
-    public void pointBuy(final HTTPRequestContext context, final HttpServletRequest request, final HttpServletResponse response)
-            throws Exception {
-        final JSONObject ret = Results.falseResult();
-        context.renderJSON(ret);
-
-        final String allowRegister = optionQueryService.getAllowRegister();
-        if (!"2".equals(allowRegister)) {
-            return;
-        }
-
-        final JSONObject currentUser = (JSONObject) request.getAttribute(User.USER);
-        final String fromId = currentUser.optString(Keys.OBJECT_ID);
-        final String userName = currentUser.optString(User.USER_NAME);
-
-        // 故意先生成后返回校验，所以即使积分不够也是可以兑换成功的
-        // 这是为了让积分不够的用户可以通过这个后门兑换、分发邀请码以实现积分“自充”
-        // 后期可能会关掉这个【特性】
-        final String invitecode = invitecodeMgmtService.userGenInvitecode(fromId, userName);
-
-        final String transferId = pointtransferMgmtService.transfer(fromId, Pointtransfer.ID_C_SYS,
-                Pointtransfer.TRANSFER_TYPE_C_BUY_INVITECODE, Pointtransfer.TRANSFER_SUM_C_BUY_INVITECODE,
-                invitecode, System.currentTimeMillis());
-        final boolean succ = null != transferId;
-        ret.put(Keys.STATUS_CODE, succ);
-        if (!succ) {
-            ret.put(Keys.MSG, langPropsService.get("exchangeFailedLabel"));
-        } else {
-            String msg = langPropsService.get("expireTipLabel");
-            msg = msg.replace("${time}", DateFormatUtils.format(System.currentTimeMillis()
-                    + Symphonys.getLong("invitecode.expired"), "yyyy-MM-dd HH:mm"));
-            ret.put(Keys.MSG, invitecode + " " + msg);
-        }
-    }
-
-    /**
      * Shows user home anonymous comments page.
      *
      * @param context  the specified context
@@ -439,7 +259,7 @@ public class UserProcessor {
                                           final HttpServletResponse response, final String userName) throws Exception {
         final AbstractFreeMarkerRenderer renderer = new SkinRenderer(request);
         context.setRenderer(renderer);
-        renderer.setTemplateName("/home/comments.ftl");
+        renderer.setTemplateName("home/comments.ftl");
         final Map<String, Object> dataModel = renderer.getDataModel();
         dataModelService.fillHeaderAndFooter(request, response, dataModel);
 
@@ -477,8 +297,6 @@ public class UserProcessor {
             final boolean isFollowing = followQueryService.isFollowing(followerId, followingId, Follow.FOLLOWING_TYPE_C_USER);
             dataModel.put(Common.IS_FOLLOWING, isFollowing);
         }
-
-        user.put(UserExt.USER_T_CREATE_TIME, new Date(user.getLong(Keys.OBJECT_ID)));
 
         final List<JSONObject> userComments = commentQueryService.getUserComments(
                 avatarViewMode, user.optString(Keys.OBJECT_ID), Comment.COMMENT_ANONYMOUS_C_ANONYMOUS,
@@ -523,7 +341,7 @@ public class UserProcessor {
                                       final HttpServletResponse response, final String userName) throws Exception {
         final AbstractFreeMarkerRenderer renderer = new SkinRenderer(request);
         context.setRenderer(renderer);
-        renderer.setTemplateName("/home/home.ftl");
+        renderer.setTemplateName("home/home.ftl");
         final Map<String, Object> dataModel = renderer.getDataModel();
         dataModelService.fillHeaderAndFooter(request, response, dataModel);
 
@@ -546,7 +364,6 @@ public class UserProcessor {
         final String followingId = user.optString(Keys.OBJECT_ID);
         dataModel.put(Follow.FOLLOWING_ID, followingId);
 
-        dataModel.put(User.USER, user);
         fillHomeUser(dataModel, user, roleQueryService);
 
         final int avatarViewMode = (int) request.getAttribute(UserExt.USER_AVATAR_VIEW_MODE);
@@ -558,8 +375,6 @@ public class UserProcessor {
             final boolean isFollowing = followQueryService.isFollowing(followerId, followingId, Follow.FOLLOWING_TYPE_C_USER);
             dataModel.put(Common.IS_FOLLOWING, isFollowing);
         }
-
-        user.put(UserExt.USER_T_CREATE_TIME, new Date(user.getLong(Keys.OBJECT_ID)));
 
         final int pageSize = Symphonys.getInt("userHomeArticlesCnt");
         final int windowSize = Symphonys.getInt("userHomeArticlesWindowSize");
@@ -593,31 +408,6 @@ public class UserProcessor {
     }
 
     /**
-     * Exports posts(article/comment) to a file.
-     *
-     * @param context the specified context
-     * @param request the specified request
-     */
-    @RequestProcessing(value = "/export/posts", method = HTTPRequestMethod.POST)
-    @Before(adviceClass = {LoginCheck.class})
-    public void exportPosts(final HTTPRequestContext context, final HttpServletRequest request) {
-        context.renderJSON();
-
-        final JSONObject user = (JSONObject) request.getAttribute(User.USER);
-        final String userId = user.optString(Keys.OBJECT_ID);
-
-        final String downloadURL = postExportService.exportPosts(userId);
-        if ("-1".equals(downloadURL)) {
-            context.renderJSONValue(Keys.MSG, langPropsService.get("insufficientBalanceLabel"));
-
-        } else if (StringUtils.isBlank(downloadURL)) {
-            return;
-        }
-
-        context.renderJSON(true).renderJSONValue("url", downloadURL);
-    }
-
-    /**
      * Shows user home page.
      *
      * @param context  the specified context
@@ -641,9 +431,8 @@ public class UserProcessor {
         final String followingId = user.optString(Keys.OBJECT_ID);
         dataModel.put(Follow.FOLLOWING_ID, followingId);
 
-        renderer.setTemplateName("/home/home.ftl");
+        renderer.setTemplateName("home/home.ftl");
 
-        dataModel.put(User.USER, user);
         fillHomeUser(dataModel, user, roleQueryService);
 
         final int avatarViewMode = (int) request.getAttribute(UserExt.USER_AVATAR_VIEW_MODE);
@@ -657,8 +446,6 @@ public class UserProcessor {
             final boolean isFollowing = followQueryService.isFollowing(followerId, followingId, Follow.FOLLOWING_TYPE_C_USER);
             dataModel.put(Common.IS_FOLLOWING, isFollowing);
         }
-
-        user.put(UserExt.USER_T_CREATE_TIME, new Date(user.getLong(Keys.OBJECT_ID)));
 
         final int pageSize = Symphonys.getInt("userHomeArticlesCnt");
         final int windowSize = Symphonys.getInt("userHomeArticlesWindowSize");
@@ -686,7 +473,7 @@ public class UserProcessor {
         dataModel.put(Pagination.PAGINATION_PAGE_NUMS, pageNums);
         dataModel.put(Pagination.PAGINATION_RECORD_COUNT, recordCount);
 
-        final JSONObject currentUser = Sessions.currentUser(request);
+        final JSONObject currentUser = (JSONObject) request.getAttribute(Common.CURRENT_USER);
         if (null == currentUser) {
             dataModel.put(Common.IS_MY_ARTICLE, false);
         } else {
@@ -714,7 +501,7 @@ public class UserProcessor {
 
         final AbstractFreeMarkerRenderer renderer = new SkinRenderer(request);
         context.setRenderer(renderer);
-        renderer.setTemplateName("/home/comments.ftl");
+        renderer.setTemplateName("home/comments.ftl");
         final Map<String, Object> dataModel = renderer.getDataModel();
         dataModelService.fillHeaderAndFooter(request, response, dataModel);
         final int pageNum = Paginator.getPage(request);
@@ -738,8 +525,6 @@ public class UserProcessor {
             final boolean isFollowing = followQueryService.isFollowing(followerId, followingId, Follow.FOLLOWING_TYPE_C_USER);
             dataModel.put(Common.IS_FOLLOWING, isFollowing);
         }
-
-        user.put(UserExt.USER_T_CREATE_TIME, new Date(user.getLong(Keys.OBJECT_ID)));
 
         final List<JSONObject> userComments = commentQueryService.getUserComments(avatarViewMode,
                 user.optString(Keys.OBJECT_ID), Comment.COMMENT_ANONYMOUS_C_PUBLIC, pageNum, pageSize, currentUser);
@@ -774,18 +559,17 @@ public class UserProcessor {
      * @param request  the specified request
      * @param response the specified response
      * @param userName the specified user name
-     * @throws Exception exception
      */
     @RequestProcessing(value = "/member/{userName}/following/users", method = HTTPRequestMethod.GET)
     @Before(adviceClass = {StopwatchStartAdvice.class, AnonymousViewCheck.class, UserBlockCheck.class})
     @After(adviceClass = {PermissionGrant.class, StopwatchEndAdvice.class})
     public void showHomeFollowingUsers(final HTTPRequestContext context, final HttpServletRequest request,
-                                       final HttpServletResponse response, final String userName) throws Exception {
+                                       final HttpServletResponse response, final String userName) {
         final JSONObject user = (JSONObject) request.getAttribute(User.USER);
 
         final AbstractFreeMarkerRenderer renderer = new SkinRenderer(request);
         context.setRenderer(renderer);
-        renderer.setTemplateName("/home/following-users.ftl");
+        renderer.setTemplateName("home/following-users.ftl");
         final Map<String, Object> dataModel = renderer.getDataModel();
         dataModelService.fillHeaderAndFooter(request, response, dataModel);
         final int pageNum = Paginator.getPage(request);
@@ -820,8 +604,6 @@ public class UserProcessor {
             }
         }
 
-        user.put(UserExt.USER_T_CREATE_TIME, new Date(user.getLong(Keys.OBJECT_ID)));
-
         final int followingUserCnt = followingUsersResult.optInt(Pagination.PAGINATION_RECORD_COUNT);
         final int pageCount = (int) Math.ceil((double) followingUserCnt / (double) pageSize);
 
@@ -846,18 +628,17 @@ public class UserProcessor {
      * @param request  the specified request
      * @param response the specified response
      * @param userName the specified user name
-     * @throws Exception exception
      */
     @RequestProcessing(value = "/member/{userName}/following/tags", method = HTTPRequestMethod.GET)
     @Before(adviceClass = {StopwatchStartAdvice.class, AnonymousViewCheck.class, UserBlockCheck.class})
     @After(adviceClass = {PermissionGrant.class, StopwatchEndAdvice.class})
     public void showHomeFollowingTags(final HTTPRequestContext context, final HttpServletRequest request,
-                                      final HttpServletResponse response, final String userName) throws Exception {
+                                      final HttpServletResponse response, final String userName) {
         final JSONObject user = (JSONObject) request.getAttribute(User.USER);
 
         final AbstractFreeMarkerRenderer renderer = new SkinRenderer(request);
         context.setRenderer(renderer);
-        renderer.setTemplateName("/home/following-tags.ftl");
+        renderer.setTemplateName("home/following-tags.ftl");
         final Map<String, Object> dataModel = renderer.getDataModel();
         dataModelService.fillHeaderAndFooter(request, response, dataModel);
         final int pageNum = Paginator.getPage(request);
@@ -891,8 +672,6 @@ public class UserProcessor {
             }
         }
 
-        user.put(UserExt.USER_T_CREATE_TIME, new Date(user.getLong(Keys.OBJECT_ID)));
-
         final int followingTagCnt = followingTagsResult.optInt(Pagination.PAGINATION_RECORD_COUNT);
         final int pageCount = (int) Math.ceil(followingTagCnt / (double) pageSize);
 
@@ -917,18 +696,17 @@ public class UserProcessor {
      * @param request  the specified request
      * @param response the specified response
      * @param userName the specified user name
-     * @throws Exception exception
      */
     @RequestProcessing(value = "/member/{userName}/following/articles", method = HTTPRequestMethod.GET)
     @Before(adviceClass = {StopwatchStartAdvice.class, AnonymousViewCheck.class, UserBlockCheck.class})
     @After(adviceClass = {PermissionGrant.class, StopwatchEndAdvice.class})
     public void showHomeFollowingArticles(final HTTPRequestContext context, final HttpServletRequest request,
-                                          final HttpServletResponse response, final String userName) throws Exception {
+                                          final HttpServletResponse response, final String userName) {
         final JSONObject user = (JSONObject) request.getAttribute(User.USER);
 
         final AbstractFreeMarkerRenderer renderer = new SkinRenderer(request);
         context.setRenderer(renderer);
-        renderer.setTemplateName("/home/following-articles.ftl");
+        renderer.setTemplateName("home/following-articles.ftl");
         final Map<String, Object> dataModel = renderer.getDataModel();
         dataModelService.fillHeaderAndFooter(request, response, dataModel);
         final int pageNum = Paginator.getPage(request);
@@ -963,8 +741,6 @@ public class UserProcessor {
             }
         }
 
-        user.put(UserExt.USER_T_CREATE_TIME, new Date(user.getLong(Keys.OBJECT_ID)));
-
         final int followingArticleCnt = followingArticlesResult.optInt(Pagination.PAGINATION_RECORD_COUNT);
         final int pageCount = (int) Math.ceil(followingArticleCnt / (double) pageSize);
 
@@ -989,18 +765,17 @@ public class UserProcessor {
      * @param request  the specified request
      * @param response the specified response
      * @param userName the specified user name
-     * @throws Exception exception
      */
     @RequestProcessing(value = "/member/{userName}/watching/articles", method = HTTPRequestMethod.GET)
     @Before(adviceClass = {StopwatchStartAdvice.class, AnonymousViewCheck.class, UserBlockCheck.class})
     @After(adviceClass = {PermissionGrant.class, StopwatchEndAdvice.class})
     public void showHomeWatchingArticles(final HTTPRequestContext context, final HttpServletRequest request,
-                                         final HttpServletResponse response, final String userName) throws Exception {
+                                         final HttpServletResponse response, final String userName) {
         final JSONObject user = (JSONObject) request.getAttribute(User.USER);
 
         final AbstractFreeMarkerRenderer renderer = new SkinRenderer(request);
         context.setRenderer(renderer);
-        renderer.setTemplateName("/home/watching-articles.ftl");
+        renderer.setTemplateName("home/watching-articles.ftl");
         final Map<String, Object> dataModel = renderer.getDataModel();
         dataModelService.fillHeaderAndFooter(request, response, dataModel);
         final int pageNum = Paginator.getPage(request);
@@ -1035,8 +810,6 @@ public class UserProcessor {
             }
         }
 
-        user.put(UserExt.USER_T_CREATE_TIME, new Date(user.getLong(Keys.OBJECT_ID)));
-
         final int followingArticleCnt = followingArticlesResult.optInt(Pagination.PAGINATION_RECORD_COUNT);
         final int pageCount = (int) Math.ceil(followingArticleCnt / (double) pageSize);
 
@@ -1061,18 +834,17 @@ public class UserProcessor {
      * @param request  the specified request
      * @param response the specified response
      * @param userName the specified user name
-     * @throws Exception exception
      */
     @RequestProcessing(value = "/member/{userName}/followers", method = HTTPRequestMethod.GET)
     @Before(adviceClass = {StopwatchStartAdvice.class, AnonymousViewCheck.class, UserBlockCheck.class})
     @After(adviceClass = {PermissionGrant.class, StopwatchEndAdvice.class})
     public void showHomeFollowers(final HTTPRequestContext context, final HttpServletRequest request,
-                                  final HttpServletResponse response, final String userName) throws Exception {
+                                  final HttpServletResponse response, final String userName) {
         final JSONObject user = (JSONObject) request.getAttribute(User.USER);
 
         final AbstractFreeMarkerRenderer renderer = new SkinRenderer(request);
         context.setRenderer(renderer);
-        renderer.setTemplateName("/home/followers.ftl");
+        renderer.setTemplateName("home/followers.ftl");
         final Map<String, Object> dataModel = renderer.getDataModel();
         dataModelService.fillHeaderAndFooter(request, response, dataModel);
         final int pageNum = Paginator.getPage(request);
@@ -1112,8 +884,6 @@ public class UserProcessor {
             }
         }
 
-        user.put(UserExt.USER_T_CREATE_TIME, new Date(user.getLong(Keys.OBJECT_ID)));
-
         final int followerUserCnt = followerUsersResult.optInt(Pagination.PAGINATION_RECORD_COUNT);
         final int pageCount = (int) Math.ceil((double) followerUserCnt / (double) pageSize);
 
@@ -1151,7 +921,7 @@ public class UserProcessor {
 
         final AbstractFreeMarkerRenderer renderer = new SkinRenderer(request);
         context.setRenderer(renderer);
-        renderer.setTemplateName("/home/points.ftl");
+        renderer.setTemplateName("home/points.ftl");
         final Map<String, Object> dataModel = renderer.getDataModel();
         dataModelService.fillHeaderAndFooter(request, response, dataModel);
         final int pageNum = Paginator.getPage(request);
@@ -1168,8 +938,7 @@ public class UserProcessor {
 
         final JSONObject userPointsResult
                 = pointtransferQueryService.getUserPoints(user.optString(Keys.OBJECT_ID), pageNum, pageSize);
-        final List<JSONObject> userPoints
-                = CollectionUtils.<JSONObject>jsonArrayToList(userPointsResult.optJSONArray(Keys.RESULTS));
+        final List<JSONObject> userPoints = CollectionUtils.jsonArrayToList(userPointsResult.optJSONArray(Keys.RESULTS));
         dataModel.put(Common.USER_HOME_POINTS, userPoints);
 
         final boolean isLoggedIn = (Boolean) dataModel.get(Common.IS_LOGGED_IN);
@@ -1180,8 +949,6 @@ public class UserProcessor {
             final boolean isFollowing = followQueryService.isFollowing(followerId, user.optString(Keys.OBJECT_ID), Follow.FOLLOWING_TYPE_C_USER);
             dataModel.put(Common.IS_FOLLOWING, isFollowing);
         }
-
-        user.put(UserExt.USER_T_CREATE_TIME, new Date(user.getLong(Keys.OBJECT_ID)));
 
         final int pointsCnt = userPointsResult.optInt(Pagination.PAGINATION_RECORD_COUNT);
         final int pageCount = (int) Math.ceil((double) pointsCnt / (double) pageSize);
@@ -1200,45 +967,6 @@ public class UserProcessor {
     }
 
     /**
-     * Point transfer.
-     *
-     * @param context  the specified context
-     * @param request  the specified request
-     * @param response the specified response
-     * @throws Exception exception
-     */
-    @RequestProcessing(value = "/point/transfer", method = HTTPRequestMethod.POST)
-    @Before(adviceClass = {LoginCheck.class, CSRFCheck.class, PointTransferValidation.class})
-    public void pointTransfer(final HTTPRequestContext context, final HttpServletRequest request, final HttpServletResponse response)
-            throws Exception {
-        final JSONObject ret = Results.falseResult();
-        context.renderJSON(ret);
-
-        final JSONObject requestJSONObject = (JSONObject) request.getAttribute(Keys.REQUEST);
-
-        final int amount = requestJSONObject.optInt(Common.AMOUNT);
-        final JSONObject toUser = (JSONObject) request.getAttribute(Common.TO_USER);
-        final JSONObject currentUser = (JSONObject) request.getAttribute(User.USER);
-
-        final String fromId = currentUser.optString(Keys.OBJECT_ID);
-        final String toId = toUser.optString(Keys.OBJECT_ID);
-
-        final String transferId = pointtransferMgmtService.transfer(fromId, toId,
-                Pointtransfer.TRANSFER_TYPE_C_ACCOUNT2ACCOUNT, amount, toId, System.currentTimeMillis());
-        final boolean succ = null != transferId;
-        ret.put(Keys.STATUS_CODE, succ);
-        if (!succ) {
-            ret.put(Keys.MSG, langPropsService.get("transferFailLabel"));
-        } else {
-            final JSONObject notification = new JSONObject();
-            notification.put(Notification.NOTIFICATION_USER_ID, toId);
-            notification.put(Notification.NOTIFICATION_DATA_ID, transferId);
-
-            notificationMgmtService.addPointTransferNotification(notification);
-        }
-    }
-
-    /**
      * Resets unverified users.
      *
      * @param context  the specified context
@@ -1247,8 +975,7 @@ public class UserProcessor {
      * @throws Exception exception
      */
     @RequestProcessing(value = "/cron/users/reset-unverified", method = HTTPRequestMethod.GET)
-    public void resetUnverifiedUsers(final HTTPRequestContext context,
-                                     final HttpServletRequest request, final HttpServletResponse response) throws Exception {
+    public void resetUnverifiedUsers(final HTTPRequestContext context, final HttpServletRequest request, final HttpServletResponse response) throws Exception {
         final String key = Symphonys.get("keyOfSymphony");
         if (!key.equals(request.getParameter("key"))) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN);
@@ -1297,17 +1024,14 @@ public class UserProcessor {
     /**
      * Lists emotions.
      *
-     * @param context  the specified context
-     * @param request  the specified request
-     * @param response the specified response
-     * @throws Exception exception
+     * @param context the specified context
+     * @param request the specified request
      */
     @RequestProcessing(value = "/users/emotions", method = HTTPRequestMethod.GET)
-    public void getEmotions(final HTTPRequestContext context, final HttpServletRequest request,
-                            final HttpServletResponse response) throws Exception {
+    public void getEmotions(final HTTPRequestContext context, final HttpServletRequest request) {
         context.renderJSON();
 
-        final JSONObject currentUser = (JSONObject) request.getAttribute(User.USER);
+        final JSONObject currentUser = (JSONObject) request.getAttribute(Common.CURRENT_USER);
         if (null == currentUser) {
             context.renderJSONValue("emotions", "");
 
@@ -1329,8 +1053,7 @@ public class UserProcessor {
      * @throws Exception exception
      */
     @RequestProcessing(value = "/cron/users/load-names", method = HTTPRequestMethod.GET)
-    public void loadUserNames(final HTTPRequestContext context, final HttpServletRequest request, final HttpServletResponse response)
-            throws Exception {
+    public void loadUserNames(final HTTPRequestContext context, final HttpServletRequest request, final HttpServletResponse response) throws Exception {
         final String key = Symphonys.get("keyOfSymphony");
         if (!key.equals(request.getParameter("key"))) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN);
@@ -1356,5 +1079,6 @@ public class UserProcessor {
         final String roleId = user.optString(User.USER_ROLE);
         final JSONObject role = roleQueryService.getRole(roleId);
         user.put(Role.ROLE_NAME, role.optString(Role.ROLE_NAME));
+        user.put(UserExt.USER_T_CREATE_TIME, new Date(user.optLong(Keys.OBJECT_ID)));
     }
 }

@@ -48,7 +48,7 @@
 
 ### 表情符号 Emoji
 
-支持大部分标准的表情符号，可使用输入法直接输入，也可手动输入字符格式。欢迎通过快捷键 `Ctrl+/` 自动完成进行输入，并在个人设置中[设置常用表情](https://naoowa.cn/settings/function)。
+支持大部分标准的表情符号，可使用输入法直接输入，也可手动输入字符格式。欢迎通过快捷键 `Ctrl+/` 自动完成进行输入，并在个人设置中[设置常用表情](https://hacpai.com/settings/function)。
 
 
 #### 一些表情例子
@@ -195,6 +195,23 @@ public class HelloWorld {
 
 请注意后面 Markdown 源代码的换行留空情况。
 
+### 数学公式
+
+$$a^2 + b^2 = \color{red}c^2$$
+
+### 流程图
+
+```flow
+st=>start: Start
+op=>operation: Your Operation
+cond=>condition: Yes or No?
+e=>end
+
+st->op->cond
+cond(yes)->e
+cond(no)->op
+```
+
 
 ### 排版
 
@@ -202,4 +219,4 @@ public class HelloWorld {
 
 ## 快捷键
 
-我们的编辑器支持很多快捷键，具体请参考 [键盘快捷键](https://naoowa.cn/article/1532935570253)（或者按 `?` :smirk_cat:）
+我们的编辑器支持很多快捷键，具体请参考 [键盘快捷键](https://hacpai.com/article/1474030007391)（或者按 `?` :smirk_cat:）

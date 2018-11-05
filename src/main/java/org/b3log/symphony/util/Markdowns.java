@@ -25,19 +25,13 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.b3log.latke.Latkes;
-import org.b3log.latke.cache.Cache;
-import org.b3log.latke.cache.CacheFactory;
-import org.b3log.latke.ioc.LatkeBeanManager;
-import org.b3log.latke.ioc.LatkeBeanManagerImpl;
-import org.b3log.latke.ioc.Lifecycle;
+import org.b3log.latke.ioc.BeanManager;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
-import org.b3log.latke.repository.jdbc.JdbcRepository;
 import org.b3log.latke.service.LangPropsService;
-import org.b3log.latke.service.LangPropsServiceImpl;
 import org.b3log.latke.util.Callstacks;
 import org.b3log.latke.util.Stopwatchs;
-import org.b3log.latke.util.Strings;
+import org.b3log.latke.util.URLs;
 import org.b3log.symphony.model.Common;
 import org.b3log.symphony.model.UserExt;
 import org.b3log.symphony.service.UserQueryService;
@@ -56,6 +50,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.*;
 
@@ -69,7 +64,7 @@ import java.util.concurrent.*;
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
  * @author <a href="http://zephyr.b3log.org">Zephyr</a>
  * @author <a href="http://vanessa.b3log.org">Vanessa</a>
- * @version 1.11.21.0, Jun 19, 2018
+ * @version 1.11.21.7, Oct 20, 2018
  * @since 0.2.0
  */
 public final class Markdowns {
@@ -80,30 +75,14 @@ public final class Markdowns {
     private static final Logger LOGGER = Logger.getLogger(Markdowns.class);
 
     /**
-     * Language service.
-     */
-    private static final LangPropsService LANG_PROPS_SERVICE
-            = LatkeBeanManagerImpl.getInstance().getReference(LangPropsServiceImpl.class);
-
-    /**
-     * Bean manager.
-     */
-    private static final LatkeBeanManager beanManager = Lifecycle.getBeanManager();
-
-    /**
-     * User query service.
-     */
-    private static final UserQueryService userQueryService;
-
-    /**
      * Markdown cache.
      */
-    private static final Cache MD_CACHE = CacheFactory.getCache("markdown");
+    private static final Map<String, JSONObject> MD_CACHE = new ConcurrentHashMap<>();
 
     /**
      * Markdown to HTML timeout.
      */
-    private static final int MD_TIMEOUT = 2000;
+    private static final int MD_TIMEOUT = Symphonys.getInt("markdown.timeout");
 
     /**
      * Marked engine serve path.
@@ -130,16 +109,6 @@ public final class Markdowns {
      * Whether marked is available.
      */
     public static boolean MARKED_AVAILABLE;
-
-    static {
-        MD_CACHE.setMaxCount(1024 * 10 * 4);
-
-        if (null != beanManager) {
-            userQueryService = beanManager.getReference(UserQueryService.class);
-        } else {
-            userQueryService = null;
-        }
-    }
 
     static {
         try {
@@ -187,18 +156,9 @@ public final class Markdowns {
         final Document.OutputSettings outputSettings = new Document.OutputSettings();
         outputSettings.prettyPrint(false);
 
-        final String tmp = Jsoup.clean(content, baseURI, Whitelist.relaxed().
-                        addAttributes(":all", "id", "target", "class").
-                        addTags("span", "hr", "kbd", "samp", "tt", "del", "s", "strike", "u").
-                        addAttributes("iframe", "src", "width", "height", "border", "marginwidth", "marginheight").
-                        addAttributes("audio", "controls", "src").
-                        addAttributes("video", "controls", "src", "width", "height").
-                        addAttributes("source", "src", "media", "type").
-                        addAttributes("object", "width", "height", "data", "type").
-                        addAttributes("param", "name", "value").
-                        addAttributes("input", "type", "disabled", "checked").
-                        addAttributes("embed", "src", "type", "width", "height", "wmode", "allowNetworking"),
-                outputSettings);
+        final Whitelist whitelist = Whitelist.relaxed().addAttributes(":all", "id", "target", "class", "data-src", "aria-name", "aria-label");
+        inputWhitelist(whitelist);
+        final String tmp = Jsoup.clean(content, baseURI, whitelist, outputSettings);
         final Document doc = Jsoup.parse(tmp, baseURI, Parser.htmlParser());
 
         final Elements ps = doc.getElementsByTag("p");
@@ -237,8 +197,6 @@ public final class Markdowns {
             if (StringUtils.startsWithIgnoreCase(data, "data:")
                     || StringUtils.startsWithIgnoreCase(data, "javascript")) {
                 embed.remove();
-
-                continue;
             }
         }
 
@@ -290,7 +248,7 @@ public final class Markdowns {
      * 'markdownErrorLabel' if exception
      */
     public static String toHTML(final String markdownText) {
-        if (Strings.isEmptyOrNull(markdownText)) {
+        if (StringUtils.isBlank(markdownText)) {
             return "";
         }
 
@@ -299,13 +257,16 @@ public final class Markdowns {
             return cachedHTML;
         }
 
+        final BeanManager beanManager = BeanManager.getInstance();
+        final LangPropsService langPropsService = beanManager.getReference(LangPropsService.class);
+        final UserQueryService userQueryService = beanManager.getReference(UserQueryService.class);
         final ExecutorService pool = Executors.newSingleThreadExecutor();
         final long[] threadId = new long[1];
 
         final Callable<String> call = () -> {
             threadId[0] = Thread.currentThread().getId();
 
-            String html = LANG_PROPS_SERVICE.get("contentRenderFailedLabel");
+            String html = langPropsService.get("contentRenderFailedLabel");
 
             if (MARKED_AVAILABLE) {
                 try {
@@ -330,6 +291,9 @@ public final class Markdowns {
                 }
             }
 
+            final Whitelist whitelist = Whitelist.relaxed();
+            inputWhitelist(whitelist);
+            html = Jsoup.clean(html, whitelist);
             final Document doc = Jsoup.parse(html);
             final List<org.jsoup.nodes.Node> toRemove = new ArrayList<>();
             doc.traverse(new NodeVisitor() {
@@ -351,16 +315,12 @@ public final class Markdowns {
                                 }
 
                                 if (null != userQueryService) {
-                                    try {
-                                        final Set<String> userNames = userQueryService.getUserNames(text);
-                                        for (final String userName : userNames) {
-                                            text = text.replace('@' + userName + (nextIsBr ? "" : " "), "@" + UserExt.getUserLink(userName));
-                                        }
-                                        text = text.replace("@participants ",
-                                                "@<a href='https://naoowa.cn' target='_blank' class='ft-red'>participants</a> ");
-                                    } finally {
-                                        JdbcRepository.dispose();
+                                    final Set<String> userNames = userQueryService.getUserNames(text);
+                                    for (final String userName : userNames) {
+                                        text = text.replace('@' + userName + (nextIsBr ? "" : " "), "@" + UserExt.getUserLink(userName));
                                     }
+                                    text = text.replace("@participants ",
+                                                "@<a href='https://naoowa.cn' target='_blank' class='ft-red'>participants</a> ");
                                 }
 
                                 if (text.contains("@<a href=")) {
@@ -387,11 +347,21 @@ public final class Markdowns {
             doc.select("pre>code").addClass("hljs");
             doc.select("a").forEach(a -> {
                 String src = a.attr("href");
-                if (!StringUtils.startsWithAny(src, new String[]{Latkes.getServePath(), Symphonys.get("qiniu.domain")})) {
-                    src = URLs.encode(src);
-                    a.attr("href", Latkes.getServePath() + "/forward?goto=" + src);
-                    a.attr("target", "_blank");
+                if (StringUtils.containsIgnoreCase(src, "javascript:")) {
+                    a.remove();
+
+                    return;
                 }
+
+                if (StringUtils.startsWithAny(src, new String[]{Latkes.getServePath(), Symphonys.get("qiniu.domain")})
+                        || StringUtils.endsWithIgnoreCase(src, ".mov")) {
+                    return;
+                }
+
+                src = URLs.encode(src);
+                a.attr("href", Latkes.getServePath() + "/forward?goto=" + src);
+                a.attr("target", "_blank");
+                a.attr("rel", "nofollow");
             });
             doc.outputSettings().prettyPrint(false);
 
@@ -429,7 +399,7 @@ public final class Markdowns {
             Stopwatchs.end();
         }
 
-        return LANG_PROPS_SERVICE.get("contentRenderFailedLabel");
+        return langPropsService.get("contentRenderFailedLabel");
     }
 
     private static String toHtmlByMarked(final String markdownText) throws Exception {
@@ -479,5 +449,19 @@ public final class Markdowns {
         final JSONObject value = new JSONObject();
         value.put(Common.DATA, html);
         MD_CACHE.put(hash, value);
+    }
+
+    private static void inputWhitelist(final Whitelist whitelist) {
+        whitelist.addTags("span", "hr", "kbd", "samp", "tt", "del", "s", "strike", "u").
+                addAttributes("iframe", "src", "width", "height", "border", "marginwidth", "marginheight").
+                addAttributes("audio", "controls", "src").
+                addAttributes("video", "controls", "src", "width", "height").
+                addAttributes("source", "src", "media", "type").
+                addAttributes("object", "width", "height", "data", "type").
+                addAttributes("param", "name", "value").
+                addAttributes("input", "type", "disabled", "checked").
+                addAttributes("embed", "src", "type", "width", "height", "wmode", "allowNetworking").
+                addAttributes("code", "class").
+                addAttributes("span", "class");
     }
 }

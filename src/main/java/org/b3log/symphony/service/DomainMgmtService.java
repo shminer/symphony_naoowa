@@ -18,7 +18,7 @@
 package org.b3log.symphony.service;
 
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.repository.*;
@@ -78,7 +78,7 @@ public class DomainMgmtService {
      * Removes a domain-tag relation.
      *
      * @param domainId the specified domain id
-     * @param tagId the specified tag id
+     * @param tagId    the specified tag id
      * @throws ServiceException service exception
      */
     @Transactional
@@ -183,7 +183,7 @@ public class DomainMgmtService {
      * Updates the specified domain by the given domain id.
      *
      * @param domainId the given domain id
-     * @param domain the specified domain
+     * @param domain   the specified domain
      * @throws ServiceException service exception
      */
     @Transactional

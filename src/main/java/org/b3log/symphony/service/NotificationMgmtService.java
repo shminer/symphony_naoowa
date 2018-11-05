@@ -18,7 +18,7 @@
 package org.b3log.symphony.service;
 
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.repository.*;
@@ -28,6 +28,7 @@ import org.b3log.latke.service.annotation.Service;
 import org.b3log.latke.util.CollectionUtils;
 import org.b3log.symphony.model.Common;
 import org.b3log.symphony.model.Notification;
+import org.b3log.symphony.model.UserExt;
 import org.b3log.symphony.processor.channel.UserChannel;
 import org.b3log.symphony.repository.NotificationRepository;
 import org.b3log.symphony.util.Symphonys;
@@ -775,7 +776,6 @@ public class NotificationMgmtService {
      *                          "dataId": ""
      * @throws ServiceException service exception
      */
-    // XXX: Unused
     @Transactional
     public void addCommentNotification(final JSONObject requestJSONObject) throws ServiceException {
         try {
@@ -820,7 +820,6 @@ public class NotificationMgmtService {
      *                          "dataId": ""
      * @throws ServiceException service exception
      */
-    // XXX: Unused
     @Transactional
     public void addArticleNotification(final JSONObject requestJSONObject) throws ServiceException {
         try {
@@ -922,7 +921,7 @@ public class NotificationMgmtService {
 
         Symphonys.EXECUTOR_SERVICE.submit(() -> {
             final JSONObject cmd = new JSONObject();
-            cmd.put(Common.USER_ID, requestJSONObject.optString(Notification.NOTIFICATION_USER_ID));
+            cmd.put(UserExt.USER_T_ID, requestJSONObject.optString(Notification.NOTIFICATION_USER_ID));
             cmd.put(Common.COMMAND, "refreshNotification");
 
             UserChannel.sendCmd(cmd);

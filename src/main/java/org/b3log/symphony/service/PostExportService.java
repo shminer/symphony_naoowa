@@ -25,7 +25,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.b3log.latke.Keys;
 import org.b3log.latke.Latkes;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.repository.FilterOperator;
@@ -48,6 +48,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
@@ -182,7 +183,7 @@ public class PostExportService {
 
         final boolean succ = null != pointtransferMgmtService.transfer(userId, Pointtransfer.ID_C_SYS,
                 Pointtransfer.TRANSFER_TYPE_C_DATA_EXPORT, Pointtransfer.TRANSFER_SUM_C_DATA_EXPORT,
-                String.valueOf(posts.length()), System.currentTimeMillis());
+                String.valueOf(posts.length()), System.currentTimeMillis(), "");
         if (!succ) {
             return null;
         }
@@ -196,7 +197,7 @@ public class PostExportService {
         final File localFile = new File(localFilePath);
 
         try {
-            final byte[] data = posts.toString(2).getBytes("UTF-8");
+            final byte[] data = posts.toString(2).getBytes(StandardCharsets.UTF_8);
 
             try (final OutputStream output = new FileOutputStream(localFile)) {
                 IOUtils.write(data, output);

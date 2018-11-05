@@ -20,7 +20,7 @@
  *
  * @author <a href="http://vanessa.b3log.org">Liyuan Li</a>
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.42.0.1, Jul 16, 2018
+ * @version 1.42.1.0, Aug 28, 2018
  */
 
 /**
@@ -49,11 +49,11 @@ var Comment = {
       complete: function (result) {
         $btn.removeAttr('disabled').css('opacity', '1')
         if (result.responseJSON.sc === 0) {
-          alert(Label.reportSuccLabel)
+          Util.alert(Label.reportSuccLabel)
           $('#reportTextarea').val('')
           $('#reportDialog').dialog('close')
         } else {
-          alert(result.responseJSON.msg)
+          Util.alert(result.responseJSON.msg)
         }
       },
     })
@@ -77,7 +77,7 @@ var Comment = {
       }),
       success: function (result) {
         if (!result.sc) {
-          alert(result.msg)
+          Util.alert(result.msg)
           return
         } else {
           $(it).closest('li').addClass('cmt-perfect')
@@ -102,7 +102,7 @@ var Comment = {
         if (result.sc === 0) {
           $('#' + id).remove()
         } else {
-          alert(result.msg)
+          Util.alert(result.msg)
         }
       },
     })
@@ -208,7 +208,7 @@ var Comment = {
       return false
     }
     if ($('#commentContent').length === 0) {
-      alert(Label.notAllowCmtLabel)
+      Util.alert(Label.notAllowCmtLabel)
       return false
     }
     if ($(this).data('hasPermission') === 'false') {
@@ -230,7 +230,7 @@ var Comment = {
       css('margin-bottom', $('.editor-panel > .wrapper').outerHeight() + 'px')
     $('#replyUseName').
       html('<a href="javascript:void(0)" onclick="Comment._bgFade($(\'.article-content\'))" class="ft-a-title"><svg><use xlink:href="#reply-to"></use></svg>'
-        + $('.article-title').text() + '</a>').
+        + $('.article-title').text().replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</a>').
       removeData()
 
     // 如果 hide 初始化， focus 无效
@@ -314,7 +314,7 @@ var Comment = {
       }
       return false
     }).bind('keyup', 'm', function assets () {
-      // x m 查看选中回贴的回复
+      // x m 查看选中回贴的回复
       if ($(
         '#comments .list > ul > li.focus .comment-action > .ft-fade > .fn-pointer').length ===
         1 && Util.prevKey === 'x') {
@@ -475,7 +475,7 @@ var Comment = {
         {name: 'ordered-list'},
         {name: 'view'},
         {name: 'fullscreen'},
-        {name: 'question', action: 'https://naoowa.cn/guide/markdown'},
+        {name: 'question', action: 'https://hacpai.com/guide/markdown'},
       ],
       extraKeys: {
         'Alt-/': 'autocompleteUserName',
@@ -610,7 +610,7 @@ var Comment = {
       cache: false,
       data: JSON.stringify(requestJSONObject),
       error: function (jqXHR, textStatus, errorThrown) {
-        alert(errorThrown)
+        Util.alert(errorThrown)
       },
       success: function (result, textStatus) {
         if (result.sc) {
@@ -645,7 +645,7 @@ var Comment = {
           )
 
         } else {
-          alert(result.msg)
+          Util.alert(result.msg)
         }
       },
     })
@@ -699,7 +699,7 @@ var Comment = {
       },
       success: function (result, textStatus) {
         if (!result.sc) {
-          alert(result.msg)
+          Util.alert(result.msg)
           return false
         }
 
@@ -776,7 +776,7 @@ var Comment = {
           attr('xlink:href', '#chevron-up')
       },
       error: function (result) {
-        alert(result.statusText)
+        Util.alert(result.statusText)
       },
       complete: function () {
         $(it).css('opacity', '1')
@@ -953,7 +953,7 @@ var Article = {
         mode: 'circulation',
         music: {
           title: $it.data('title'),
-          /* author: '<a href="https://hacpai.com/article/1464416402922" target="_blank">音乐分享</a>',*/
+          author: '<a href="https://hacpai.com/article/1464416402922" target="_blank">音乐分享</a>',
           url: $it.data('url'),
           pic: Label.staticServePath + '/images/music.png',
         },
@@ -975,7 +975,7 @@ var Article = {
       preload: 'none',
       music: {
         title: '语音预览',
-        author: '<a href="https://naoowa.cn/member/v" target="_blank">小薇</a>',
+        author: '<a href="https://hacpai.com/member/v" target="_blank">小薇</a>',
         url: $articleAudio.data('url'),
         pic: Label.staticServePath + '/images/blank.png',
       },
@@ -1041,7 +1041,7 @@ var Article = {
           return
         }
 
-        alert(result.msg)
+        Util.alert(result.msg)
       },
     })
   },
@@ -1093,7 +1093,7 @@ var Article = {
           return false
         }
 
-        alert(result.msg)
+        Util.alert(result.msg)
       },
     })
   },
@@ -1342,7 +1342,7 @@ var Article = {
           return false
         }
 
-        alert(result.msg)
+        Util.alert(result.msg)
       },
     })
     $('#revision').dialog('open')
@@ -1490,6 +1490,9 @@ var Article = {
    * @description 解析语法高亮
    */
   parseLanguage: function () {
+    if (Label.markedAvailable) {
+      return
+    }
     $('pre code').each(function (i, block) {
       $(this).css('max-height', $(window).height() - 68)
       hljs.highlightBlock(block)
@@ -1521,7 +1524,7 @@ var Article = {
             return
           }
 
-          alert(result.msg)
+          Util.alert(result.msg)
         },
         error: function (result) {
           Util.needLogin()
@@ -1544,7 +1547,7 @@ var Article = {
     }
 
     if (Label.currentUserName === Label.articleAuthorName) {
-      alert(Label.thankSelfLabel)
+      Util.alert(Label.thankSelfLabel)
       return false
     }
 
@@ -1588,7 +1591,7 @@ var Article = {
           return false
         }
 
-        alert(result.msg)
+        Util.alert(result.msg)
       },
     })
   },
@@ -1604,7 +1607,7 @@ var Article = {
         type: 'POST',
         cache: false,
         success: function (result, textStatus) {
-          alert(result.msg)
+          Util.alert(result.msg)
 
           window.location.href = Label.servePath + '/recent'
         },
@@ -1878,7 +1881,7 @@ var Article = {
     }
 
     $.ajax({
-      url: Label.servePath + '/notification/read',
+      url: Label.servePath + '/notifications/read',
       type: 'POST',
       cache: false,
       data: JSON.stringify(requestJSONObject),

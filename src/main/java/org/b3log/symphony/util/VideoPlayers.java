@@ -18,10 +18,8 @@
 package org.b3log.symphony.util;
 
 import org.apache.commons.lang.StringUtils;
-import org.b3log.latke.ioc.LatkeBeanManager;
-import org.b3log.latke.ioc.Lifecycle;
+import org.b3log.latke.ioc.BeanManager;
 import org.b3log.latke.service.LangPropsService;
-import org.b3log.latke.service.LangPropsServiceImpl;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,7 +28,7 @@ import java.util.regex.Pattern;
  * Video player utilities.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.0.1.0, Jul 15, 2018
+ * @version 1.0.1.1, Oct 25, 2018
  * @since 2.2.0
  */
 public final class VideoPlayers {
@@ -39,7 +37,7 @@ public final class VideoPlayers {
      * Video URL regix.
      */
     private static final String VIDEO_URL_REGEX =
-            "<p>( )*<a href.*\\.(rm|rmvb|3gp|avi|mpeg|mp4|wmv|mkv|dat|asf|flv).*</a>( )*</p>";
+            "<p>( )*<a href.*\\.(rm|rmvb|3gp|avi|mpeg|mp4|wmv|mkv|dat|asf|flv|mov).*</a>( )*</p>";
 
     /**
      * Video URL regex pattern.
@@ -53,8 +51,8 @@ public final class VideoPlayers {
      * @return rendered content
      */
     public static final String render(final String content) {
-        final LatkeBeanManager beanManager = Lifecycle.getBeanManager();
-        final LangPropsService langPropsService = beanManager.getReference(LangPropsServiceImpl.class);
+        final BeanManager beanManager = BeanManager.getInstance();
+        final LangPropsService langPropsService = beanManager.getReference(LangPropsService.class);
 
         final StringBuffer contentBuilder = new StringBuffer();
         final Matcher m = PATTERN.matcher(content);

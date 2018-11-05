@@ -19,16 +19,14 @@ package org.b3log.symphony.processor.advice.validate;
 
 import org.apache.commons.lang.StringUtils;
 import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.inject.Inject;
-import org.b3log.latke.ioc.inject.Named;
-import org.b3log.latke.ioc.inject.Singleton;
+import org.b3log.latke.ioc.Inject;
+import org.b3log.latke.ioc.Singleton;
 import org.b3log.latke.model.User;
 import org.b3log.latke.service.LangPropsService;
 import org.b3log.latke.servlet.HTTPRequestContext;
 import org.b3log.latke.servlet.advice.BeforeRequestProcessAdvice;
 import org.b3log.latke.servlet.advice.RequestProcessAdviceException;
 import org.b3log.latke.util.Requests;
-import org.b3log.latke.util.Strings;
 import org.b3log.symphony.model.Common;
 import org.b3log.symphony.model.Role;
 import org.b3log.symphony.model.UserExt;
@@ -47,7 +45,6 @@ import java.util.Map;
  * @version 1.0.0.2, Jun 2, 2018
  * @since 1.4.0
  */
-@Named
 @Singleton
 public class ChatMsgAddValidation extends BeforeRequestProcessAdvice {
 
@@ -83,7 +80,7 @@ public class ChatMsgAddValidation extends BeforeRequestProcessAdvice {
             requestJSONObject = Requests.parseRequestJSONObject(request, context.getResponse());
             request.setAttribute(Keys.REQUEST, requestJSONObject);
 
-            final JSONObject currentUser = (JSONObject) request.getAttribute(User.USER);
+            final JSONObject currentUser = (JSONObject) request.getAttribute(Common.CURRENT_USER);
             if (System.currentTimeMillis() - currentUser.optLong(UserExt.USER_LATEST_CMT_TIME) < Symphonys.getLong("minStepChatTime")
                     && !Role.ROLE_ID_C_ADMIN.equals(currentUser.optString(User.USER_ROLE))) {
                 throw new Exception(langPropsService.get("tooFrequentCmtLabel"));
@@ -94,7 +91,7 @@ public class ChatMsgAddValidation extends BeforeRequestProcessAdvice {
 
         String content = requestJSONObject.optString(Common.CONTENT);
         content = StringUtils.trim(content);
-        if (Strings.isEmptyOrNull(content) || content.length() > MAX_CONTENT_LENGTH) {
+        if (StringUtils.isBlank(content) || content.length() > MAX_CONTENT_LENGTH) {
             throw new RequestProcessAdviceException(new JSONObject().put(Keys.MSG, langPropsService.get("commentErrorLabel")));
         }
 

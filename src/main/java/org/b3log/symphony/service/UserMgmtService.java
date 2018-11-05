@@ -20,12 +20,13 @@ package org.b3log.symphony.service;
 import com.qiniu.storage.Configuration;
 import com.qiniu.storage.UploadManager;
 import com.qiniu.util.Auth;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.b3log.latke.Keys;
 import org.b3log.latke.Latkes;
-import org.b3log.latke.ioc.inject.Inject;
+import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.User;
@@ -35,19 +36,17 @@ import org.b3log.latke.service.LangPropsService;
 import org.b3log.latke.service.ServiceException;
 import org.b3log.latke.service.annotation.Service;
 import org.b3log.latke.util.Ids;
-import org.b3log.latke.util.MD5;
-import org.b3log.latke.util.Requests;
-import org.b3log.latke.util.Strings;
+import org.b3log.latke.util.URLs;
 import org.b3log.symphony.model.*;
+import org.b3log.symphony.processor.advice.validate.UserRegisterValidation;
 import org.b3log.symphony.repository.*;
-import org.b3log.symphony.util.*;
+import org.b3log.symphony.util.Geos;
+import org.b3log.symphony.util.Gravatars;
+import org.b3log.symphony.util.Symphonys;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.imageio.ImageIO;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
@@ -61,7 +60,7 @@ import java.util.regex.Pattern;
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
  * @author Bill Ho
- * @version 1.15.22.3, May 23, 2018
+ * @version 1.16.0.5, Sep 26, 2018
  * @since 0.2.0
  */
 @Service
@@ -133,124 +132,95 @@ public class UserMgmtService {
     private NotificationMgmtService notificationMgmtService;
 
     /**
-     * Tries to login with cookie.
+     * Deactivates the specified user.
      *
-     * @param request  the specified request
-     * @param response the specified response
-     * @return returns {@code true} if logged in, returns {@code false} otherwise
+     * @param userId the specified user id
+     * @throws ServiceException service exception
      */
-    public boolean tryLogInWithCookie(final HttpServletRequest request, final HttpServletResponse response) {
-        final Cookie[] cookies = request.getCookies();
-        if (null == cookies || 0 == cookies.length) {
-            return false;
-        }
-
+    public void deactivateUser(final String userId) throws ServiceException {
+        final Transaction transaction = userRepository.beginTransaction();
         try {
-            for (final Cookie cookie : cookies) {
-                if (!Sessions.COOKIE_NAME.equals(cookie.getName())) {
-                    continue;
-                }
+            final JSONObject user = userRepository.get(userId);
+            final String userNo = user.optString(UserExt.USER_NO);
+            final String newName = UserExt.ANONYMOUS_USER_NAME + userNo;
+            user.put(User.USER_NAME, newName);
+            user.put(User.USER_EMAIL, newName + UserExt.USER_BUILTIN_EMAIL_SUFFIX);
+            user.put(UserExt.USER_NICKNAME, "");
+            user.put(UserExt.USER_TAGS, "");
+            user.put(User.USER_URL, "");
+            user.put(UserExt.USER_INTRO, "");
+            user.put(UserExt.USER_AVATAR_URL, AvatarQueryService.DEFAULT_AVATAR_URL);
+            user.put(UserExt.USER_CITY, "");
+            user.put(UserExt.USER_PROVINCE, "");
+            user.put(UserExt.USER_COUNTRY, "");
+            user.put(User.USER_ROLE, Role.ROLE_ID_C_DEFAULT);
+            user.put(UserExt.USER_ONLINE_FLAG, false);
+            user.put(UserExt.USER_STATUS, UserExt.USER_STATUS_C_DEACTIVATED);
 
-                final String value = Crypts.decryptByAES(cookie.getValue(), Symphonys.get("cookie.secret"));
-                final JSONObject cookieJSONObject = new JSONObject(value);
-
-                final String userId = cookieJSONObject.optString(Keys.OBJECT_ID);
-                if (Strings.isEmptyOrNull(userId)) {
-                    break;
-                }
-
-                final JSONObject user = userRepository.get(userId);
-                if (null == user) {
-                    break;
-                }
-
-                final String ip = Requests.getRemoteAddr(request);
-
-                if (UserExt.USER_STATUS_C_INVALID == user.optInt(UserExt.USER_STATUS)
-                        || UserExt.USER_STATUS_C_INVALID_LOGIN == user.optInt(UserExt.USER_STATUS)) {
-                    Sessions.logout(request, response);
-
-                    updateOnlineStatus(userId, ip, false);
-
-                    return false;
-                }
-
-                final String userPassword = user.optString(User.USER_PASSWORD);
-                final String token = cookieJSONObject.optString(Keys.TOKEN);
-                final String password = StringUtils.substringBeforeLast(token, ":");
-
-                if (userPassword.equals(password)) {
-                    Sessions.login(request, response, user, cookieJSONObject.optBoolean(Common.REMEMBER_LOGIN));
-
-                    updateOnlineStatus(userId, ip, true);
-
-                    LOGGER.log(Level.TRACE, "Logged in with cookie[userId={0}]", userId);
-
-                    return true;
-                }
+            userRepository.update(userId, user);
+            transaction.commit();
+        } catch (final RepositoryException e) {
+            if (transaction.isActive()) {
+                transaction.rollback();
             }
-        } catch (final Exception e) {
-            LOGGER.log(Level.WARN, "Parses cookie failed, clears the cookie [name=" + Sessions.COOKIE_NAME + "]");
 
-            final Cookie cookie = new Cookie(Sessions.COOKIE_NAME, null);
-            cookie.setMaxAge(0);
-            cookie.setPath("/");
-
-            response.addCookie(cookie);
+            LOGGER.log(Level.ERROR, "Deactivates a user [id=" + userId + "] failed", e);
+            throw new ServiceException(e);
         }
-
-        return false;
     }
 
     /**
      * Updates a user's online status and saves the login time and IP.
      *
      * @param userId     the specified user id
-     * @param ip         the specified IP, could be "" if the {@code onlineFlag} is {@code false}
+     * @param ip         the specified IP, could be {@code null}
      * @param onlineFlag the specified online flag
-     * @throws ServiceException service exception
+     * @param force      the specified force flag to update
      */
-    public void updateOnlineStatus(final String userId, final String ip, final boolean onlineFlag) throws ServiceException {
+    public void updateOnlineStatus(final String userId, final String ip, final boolean onlineFlag, final boolean force) {
         Transaction transaction = null;
 
         try {
-            final JSONObject address = Geos.getAddress(ip);
-
             final JSONObject user = userRepository.get(userId);
             if (null == user) {
                 return;
             }
 
-            if (null != address) {
-                final String country = address.optString(Common.COUNTRY);
-                final String province = address.optString(Common.PROVINCE);
-                final String city = address.optString(Common.CITY);
+            final long updatedAt = user.optLong(UserExt.USER_UPDATE_TIME);
+            final long now = System.currentTimeMillis();
+            if (now - updatedAt < 1000 * 60 && !force) {
+                return;
+            }
 
-                user.put(UserExt.USER_COUNTRY, country);
-                user.put(UserExt.USER_PROVINCE, province);
-                user.put(UserExt.USER_CITY, city);
+            if (StringUtils.isNotBlank(ip)) {
+                final JSONObject address = Geos.getAddress(ip);
+                if (null != address) {
+                    final String country = address.optString(Common.COUNTRY);
+                    final String province = address.optString(Common.PROVINCE);
+                    final String city = address.optString(Common.CITY);
+
+                    user.put(UserExt.USER_COUNTRY, country);
+                    user.put(UserExt.USER_PROVINCE, province);
+                    user.put(UserExt.USER_CITY, city);
+                }
+                user.put(UserExt.USER_LATEST_LOGIN_IP, ip);
             }
 
             transaction = userRepository.beginTransaction();
 
             user.put(UserExt.USER_ONLINE_FLAG, onlineFlag);
-            user.put(UserExt.USER_LATEST_LOGIN_TIME, System.currentTimeMillis());
-
-            if (onlineFlag) {
-                user.put(UserExt.USER_LATEST_LOGIN_IP, ip);
-            }
+            user.put(UserExt.USER_LATEST_LOGIN_TIME, now);
+            user.put(UserExt.USER_UPDATE_TIME, now);
 
             userRepository.update(userId, user);
 
             transaction.commit();
         } catch (final RepositoryException e) {
-            LOGGER.log(Level.ERROR, "Updates user online status failed [id=" + userId + "]", e);
+            LOGGER.log(Level.ERROR, "Updates user online status failed [id=" + userId + ", ip=" + ip + ", flag=" + onlineFlag + "]", e);
 
             if (null != transaction && transaction.isActive()) {
                 transaction.rollback();
             }
-
-            throw new ServiceException(e);
         }
     }
 
@@ -311,48 +281,6 @@ public class UserMgmtService {
     }
 
     /**
-     * Updates a user's sync B3log settings by the specified request json object.
-     *
-     * @param requestJSONObject the specified request json object (user), for example,
-     *                          "oId": "",
-     *                          "userB3Key": "",
-     *                          "userB3ClientAddArticleURL": "",
-     *                          "userB3ClientUpdateArticleURL": "",
-     *                          "userB3ClientAddCommentURL": "",
-     *                          "syncWithSymphonyClient": boolean // optional, default to false
-     * @throws ServiceException service exception
-     */
-    public void updateSyncB3(final JSONObject requestJSONObject) throws ServiceException {
-        final Transaction transaction = userRepository.beginTransaction();
-
-        try {
-            final String oldUserId = requestJSONObject.optString(Keys.OBJECT_ID);
-            final JSONObject oldUser = userRepository.get(oldUserId);
-
-            if (null == oldUser) {
-                throw new ServiceException(langPropsService.get("updateFailLabel"));
-            }
-
-            // Update
-            oldUser.put(UserExt.USER_B3_KEY, requestJSONObject.optString(UserExt.USER_B3_KEY));
-            oldUser.put(UserExt.USER_B3_CLIENT_ADD_ARTICLE_URL, requestJSONObject.optString(UserExt.USER_B3_CLIENT_ADD_ARTICLE_URL));
-            oldUser.put(UserExt.USER_B3_CLIENT_UPDATE_ARTICLE_URL, requestJSONObject.optString(UserExt.USER_B3_CLIENT_UPDATE_ARTICLE_URL));
-            oldUser.put(UserExt.USER_B3_CLIENT_ADD_COMMENT_URL, requestJSONObject.optString(UserExt.USER_B3_CLIENT_ADD_COMMENT_URL));
-            oldUser.put(UserExt.SYNC_TO_CLIENT, requestJSONObject.optBoolean(UserExt.SYNC_TO_CLIENT, false));
-
-            userRepository.update(oldUserId, oldUser);
-            transaction.commit();
-        } catch (final RepositoryException e) {
-            if (transaction.isActive()) {
-                transaction.rollback();
-            }
-
-            LOGGER.log(Level.ERROR, "Updates user sync b3log settings failed", e);
-            throw new ServiceException(e);
-        }
-    }
-
-    /**
      * Updates a user's password by the specified request json object.
      *
      * @param requestJSONObject the specified request json object (user), for example,
@@ -397,7 +325,8 @@ public class UserMgmtService {
      *                          "userAppRole": int, // optional, default to 0
      *                          "userRole": "", // optional, uses {@value Role#ROLE_ID_C_DEFAULT} instead if not specified
      *                          "userStatus": int, // optional, uses {@value UserExt#USER_STATUS_C_NOT_VERIFIED} instead if not specified
-     *                          "userGuideStep": int // optional, uses {@value UserExt#USER_GUIDE_STEP_UPLOAD_AVATAR} instead if not specified
+     *                          "userGuideStep": int, // optional, uses {@value UserExt#USER_GUIDE_STEP_UPLOAD_AVATAR} instead if not specified
+     *                          "userAvatarURL": "" // optional, generate it if not specified
      *                          ,see {@link User} for more details
      * @return generated user id
      * @throws ServiceException if user name or email duplicated, or repository exception
@@ -411,6 +340,7 @@ public class UserMgmtService {
             JSONObject user = userRepository.getByName(userName);
             if (null != user && (UserExt.USER_STATUS_C_VALID == user.optInt(UserExt.USER_STATUS)
                     || UserExt.USER_STATUS_C_INVALID_LOGIN == user.optInt(UserExt.USER_STATUS)
+                    || UserExt.USER_STATUS_C_DEACTIVATED == user.optInt(UserExt.USER_STATUS)
                     || UserExt.NULL_USER_NAME.equals(userName))) {
                 if (transaction.isActive()) {
                     transaction.rollback();
@@ -426,7 +356,8 @@ public class UserMgmtService {
             int userNo = 0;
             if (null != user) {
                 if (UserExt.USER_STATUS_C_VALID == user.optInt(UserExt.USER_STATUS)
-                        || UserExt.USER_STATUS_C_INVALID_LOGIN == user.optInt(UserExt.USER_STATUS)) {
+                        || UserExt.USER_STATUS_C_INVALID_LOGIN == user.optInt(UserExt.USER_STATUS)
+                        || UserExt.USER_STATUS_C_DEACTIVATED == user.optInt(UserExt.USER_STATUS)) {
                     if (transaction.isActive()) {
                         transaction.rollback();
                     }
@@ -450,10 +381,6 @@ public class UserMgmtService {
             user.put(UserExt.USER_ARTICLE_COUNT, 0);
             user.put(UserExt.USER_COMMENT_COUNT, 0);
             user.put(UserExt.USER_TAG_COUNT, 0);
-            user.put(UserExt.USER_B3_KEY, "");
-            user.put(UserExt.USER_B3_CLIENT_ADD_ARTICLE_URL, "");
-            user.put(UserExt.USER_B3_CLIENT_UPDATE_ARTICLE_URL, "");
-            user.put(UserExt.USER_B3_CLIENT_ADD_COMMENT_URL, "");
             user.put(UserExt.USER_INTRO, "");
             user.put(UserExt.USER_NICKNAME, "");
             user.put(UserExt.USER_AVATAR_TYPE, UserExt.USER_AVATAR_TYPE_C_UPLOAD);
@@ -475,14 +402,13 @@ public class UserMgmtService {
             user.put(UserExt.USER_JOIN_POINT_RANK, UserExt.USER_JOIN_POINT_RANK_C_JOIN);
             user.put(UserExt.USER_JOIN_USED_POINT_RANK, UserExt.USER_JOIN_USED_POINT_RANK_C_JOIN);
             user.put(UserExt.USER_TAGS, "");
-            user.put(UserExt.USER_SKIN, Symphonys.get("skinDirName")); // TODO: set default skin by app role
+            user.put(UserExt.USER_SKIN, Symphonys.get("skinDirName"));
             user.put(UserExt.USER_MOBILE_SKIN, Symphonys.get("mobileSkinDirName"));
             user.put(UserExt.USER_COUNTRY, "");
             user.put(UserExt.USER_PROVINCE, "");
             user.put(UserExt.USER_CITY, "");
             user.put(UserExt.USER_UPDATE_TIME, 0L);
             user.put(UserExt.USER_GEO_STATUS, UserExt.USER_GEO_STATUS_C_PUBLIC);
-            user.put(UserExt.SYNC_TO_CLIENT, false);
             final int status = requestJSONObject.optInt(UserExt.USER_STATUS, UserExt.USER_STATUS_C_NOT_VERIFIED);
             user.put(UserExt.USER_STATUS, status);
             user.put(UserExt.USER_COMMENT_VIEW_MODE, UserExt.USER_COMMENT_VIEW_MODE_C_REALTIME);
@@ -496,9 +422,7 @@ public class UserMgmtService {
             user.put(UserExt.USER_FOLLOWER_STATUS, UserExt.USER_XXX_STATUS_C_PUBLIC);
             user.put(UserExt.USER_BREEZEMOON_STATUS, UserExt.USER_XXX_STATUS_C_PUBLIC);
             user.put(UserExt.USER_POINT_STATUS, UserExt.USER_XXX_STATUS_C_PUBLIC);
-            user.put(UserExt.USER_TIMELINE_STATUS, UserExt.USER_XXX_STATUS_C_PUBLIC);
             user.put(UserExt.USER_UA_STATUS, UserExt.USER_XXX_STATUS_C_PUBLIC);
-            user.put(UserExt.USER_FORGE_LINK_STATUS, UserExt.USER_XXX_STATUS_C_PUBLIC);
             user.put(UserExt.USER_NOTIFY_STATUS, UserExt.USER_XXX_STATUS_C_ENABLED);
             user.put(UserExt.USER_SUB_MAIL_STATUS, UserExt.USER_XXX_STATUS_C_ENABLED);
             user.put(UserExt.USER_LIST_PAGE_SIZE, Symphonys.getInt("indexArticlesCnt"));
@@ -506,7 +430,8 @@ public class UserMgmtService {
             user.put(UserExt.USER_AVATAR_VIEW_MODE, UserExt.USER_AVATAR_VIEW_MODE_C_ORIGINAL);
             user.put(UserExt.USER_SUB_MAIL_SEND_TIME, System.currentTimeMillis());
             user.put(UserExt.USER_KEYBOARD_SHORTCUTS_STATUS, UserExt.USER_XXX_STATUS_C_DISABLED);
-            user.put(UserExt.USER_REPLY_WATCH_ARTICLE_STATUS, UserExt.USER_XXX_STATUS_C_ENABLED);
+            user.put(UserExt.USER_REPLY_WATCH_ARTICLE_STATUS, UserExt.USER_SUB_MAIL_STATUS_DISABLED);
+            user.put(UserExt.USER_FORWARD_PAGE_STATUS, UserExt.USER_XXX_STATUS_C_ENABLED);
 
             final JSONObject optionLanguage = optionRepository.get(Option.ID_C_MISC_LANGUAGE);
             final String adminSpecifiedLang = optionLanguage.optString(Option.OPTION_VALUE);
@@ -522,7 +447,7 @@ public class UserMgmtService {
             if (toUpdate) {
                 user.put(UserExt.USER_NO, userNo);
 
-                if (!Symphonys.get("defaultThumbnailURL").equals(avatarURL)) { // generate/upload avatar succ
+                if (!AvatarQueryService.DEFAULT_AVATAR_URL.equals(avatarURL)) { // generate/upload avatar succ
                     if (Symphonys.getBoolean("qiniu.enabled")) {
                         user.put(UserExt.USER_AVATAR_URL, Symphonys.get("qiniu.domain") + "/avatar/" + ret + "?"
                                 + new Date().getTime());
@@ -533,7 +458,7 @@ public class UserMgmtService {
                     avatarURL = user.optString(UserExt.USER_AVATAR_URL);
                     if (255 < StringUtils.length(avatarURL)) {
                         LOGGER.warn("Length of user [" + userName + "]'s avatar URL [" + avatarURL + "] larger then 255");
-                        avatarURL = Symphonys.get("defaultThumbnailURL");
+                        avatarURL = AvatarQueryService.DEFAULT_AVATAR_URL;
                         user.put(UserExt.USER_AVATAR_URL, avatarURL);
                     }
 
@@ -543,39 +468,44 @@ public class UserMgmtService {
                 ret = Ids.genTimeMillisId();
                 user.put(Keys.OBJECT_ID, ret);
 
-                try {
-                    byte[] avatarData;
+                final String specifiedAvatar = requestJSONObject.optString(UserExt.USER_AVATAR_URL);
+                if (AvatarQueryService.DEFAULT_AVATAR_URL.equals(specifiedAvatar)) {
+                    user.put(UserExt.USER_AVATAR_URL, specifiedAvatar);
+                } else {
+                    try {
+                        byte[] avatarData;
 
-                    final String hash = MD5.hash(ret);
-                    avatarData = Gravatars.getRandomAvatarData(hash); // https://github.com/b3log/symphony/issues/569
-                    if (null == avatarData) {
-                        final BufferedImage img = avatarQueryService.createAvatar(hash, 512);
-                        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        ImageIO.write(img, "jpg", baos);
-                        baos.flush();
-                        avatarData = baos.toByteArray();
-                        baos.close();
-                    }
-
-                    if (Symphonys.getBoolean("qiniu.enabled")) {
-                        final Auth auth = Auth.create(Symphonys.get("qiniu.accessKey"), Symphonys.get("qiniu.secretKey"));
-                        final UploadManager uploadManager = new UploadManager(new Configuration());
-
-                        uploadManager.put(avatarData, "avatar/" + ret, auth.uploadToken(Symphonys.get("qiniu.bucket")),
-                                null, "image/jpeg", false);
-                        user.put(UserExt.USER_AVATAR_URL, Symphonys.get("qiniu.domain") + "/avatar/" + ret + "?" + new Date().getTime());
-                    } else {
-                        final String fileName = UUID.randomUUID().toString().replaceAll("-", "") + ".jpg";
-                        try (final OutputStream output = new FileOutputStream(Symphonys.get("upload.dir") + fileName)) {
-                            IOUtils.write(avatarData, output);
+                        final String hash = DigestUtils.md5Hex(ret);
+                        avatarData = Gravatars.getRandomAvatarData(hash); // https://github.com/b3log/symphony/issues/569
+                        if (null == avatarData) {
+                            final BufferedImage img = avatarQueryService.createAvatar(hash, 512);
+                            final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                            ImageIO.write(img, "jpg", baos);
+                            baos.flush();
+                            avatarData = baos.toByteArray();
+                            baos.close();
                         }
 
-                        user.put(UserExt.USER_AVATAR_URL, Latkes.getServePath() + "/upload/" + fileName);
-                    }
-                } catch (final IOException e) {
-                    LOGGER.log(Level.ERROR, "Generates avatar error, using default thumbnail instead", e);
+                        if (Symphonys.getBoolean("qiniu.enabled")) {
+                            final Auth auth = Auth.create(Symphonys.get("qiniu.accessKey"), Symphonys.get("qiniu.secretKey"));
+                            final UploadManager uploadManager = new UploadManager(new Configuration());
 
-                    user.put(UserExt.USER_AVATAR_URL, Symphonys.get("defaultThumbnailURL"));
+                            uploadManager.put(avatarData, "avatar/" + ret, auth.uploadToken(Symphonys.get("qiniu.bucket")),
+                                    null, "image/jpeg", false);
+                            user.put(UserExt.USER_AVATAR_URL, Symphonys.get("qiniu.domain") + "/avatar/" + ret + "?" + new Date().getTime());
+                        } else {
+                            final String fileName = UUID.randomUUID().toString().replaceAll("-", "") + ".jpg";
+                            try (final OutputStream output = new FileOutputStream(Symphonys.get("upload.dir") + fileName)) {
+                                IOUtils.write(avatarData, output);
+                            }
+
+                            user.put(UserExt.USER_AVATAR_URL, Latkes.getServePath() + "/upload/" + fileName);
+                        }
+                    } catch (final IOException e) {
+                        LOGGER.log(Level.ERROR, "Generates avatar error, using default thumbnail instead", e);
+
+                        user.put(UserExt.USER_AVATAR_URL, AvatarQueryService.DEFAULT_AVATAR_URL);
+                    }
                 }
 
                 final JSONObject memberCntOption = optionRepository.get(Option.ID_C_STATISTIC_MEMBER_COUNT);
@@ -594,7 +524,7 @@ public class UserMgmtService {
             if (UserExt.USER_STATUS_C_VALID == status) {
                 // Point
                 pointtransferMgmtService.transfer(Pointtransfer.ID_C_SYS, ret,
-                        Pointtransfer.TRANSFER_TYPE_C_INIT, Pointtransfer.TRANSFER_SUM_C_INIT, ret, System.currentTimeMillis());
+                        Pointtransfer.TRANSFER_TYPE_C_INIT, Pointtransfer.TRANSFER_SUM_C_INIT, ret, System.currentTimeMillis(), "");
 
                 // Occupy the username, defeat others
                 final Transaction trans = userRepository.beginTransaction();
@@ -610,12 +540,15 @@ public class UserMgmtService {
                     for (int i = 0; i < others.length(); i++) {
                         final JSONObject u = others.optJSONObject(i);
                         final String id = u.optString(Keys.OBJECT_ID);
+                        final String mail = u.optString(User.USER_EMAIL);
+
                         u.put(User.USER_NAME, UserExt.NULL_USER_NAME);
+                        u.put(User.USER_EMAIL, "");
                         u.put(UserExt.USER_STATUS, UserExt.USER_STATUS_C_NOT_VERIFIED);
 
                         userRepository.update(id, u);
 
-                        LOGGER.log(Level.INFO, "Defeated a user [email=" + u.optString(User.USER_EMAIL) + "]");
+                        LOGGER.log(Level.INFO, "Defeated a user [email=" + mail + "]");
                     }
 
                     trans.commit();
@@ -759,6 +692,10 @@ public class UserMgmtService {
         final Transaction transaction = userRepository.beginTransaction();
 
         try {
+            if (UserRegisterValidation.invalidUserName(newUserName)) {
+                throw new ServiceException(langPropsService.get("invalidUserNameLabel") + " [" + newUserName + "]");
+            }
+
             if (!UserExt.NULL_USER_NAME.equals(newUserName) && null != userRepository.getByName(newUserName)) {
                 throw new ServiceException(langPropsService.get("duplicatedUserNameLabel") + " [" + newUserName + "]");
             }
@@ -797,13 +734,14 @@ public class UserMgmtService {
 
             for (int i = 0; i < users.length(); i++) {
                 final JSONObject user = users.optJSONObject(i);
-                final String id = user.optString(Keys.OBJECT_ID);
-
                 user.put(User.USER_NAME, UserExt.NULL_USER_NAME);
+                final String email = user.optString(User.USER_EMAIL);
+                user.put(User.USER_EMAIL, "");
 
+                final String id = user.optString(Keys.OBJECT_ID);
                 userRepository.update(id, user);
 
-                LOGGER.log(Level.INFO, "Reset unverified user [email=" + user.optString(User.USER_EMAIL) + "]");
+                LOGGER.log(Level.INFO, "Reset unverified user [email=" + email + "]");
             }
         } catch (final RepositoryException e) {
             LOGGER.log(Level.ERROR, "Reset unverified users failed", e);
@@ -865,6 +803,8 @@ public class UserMgmtService {
                 tag.put(Tag.TAG_SEO_KEYWORDS, tagTitle);
                 tag.put(Tag.TAG_SEO_DESC, "");
                 tag.put(Tag.TAG_RANDOM_DOUBLE, Math.random());
+                tag.put(Tag.TAG_AD, "");
+                tag.put(Tag.TAG_SHOW_SIDE_AD, 0);
 
                 tagId = tagRepository.add(tag);
 

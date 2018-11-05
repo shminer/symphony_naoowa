@@ -17,17 +17,11 @@
  */
 package org.b3log.symphony.model;
 
-import org.apache.commons.lang.StringUtils;
-
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-
 /**
  * This class defines all link model relevant keys.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.3.0.5, Jun 28, 2017
+ * @version 1.4.0.0, Oct 1, 2018
  * @since 1.6.0
  */
 public final class Link {
@@ -43,6 +37,11 @@ public final class Link {
     public static final String LINKS = "links";
 
     /**
+     * Key of link address hash.
+     */
+    public static final String LINK_ADDR_HASH = "linkAddrHash";
+
+    /**
      * Key of link address.
      */
     public static final String LINK_ADDR = "linkAddr";
@@ -51,11 +50,6 @@ public final class Link {
      * Key of link title.
      */
     public static final String LINK_TITLE = "linkTitle";
-
-    /**
-     * Key of link type.
-     */
-    public static final String LINK_TYPE = "linkType";
 
     /**
      * Key of link submit count.
@@ -97,12 +91,17 @@ public final class Link {
      */
     public static final String LINK_PING_ERR_CNT = "linkPingErrCnt";
 
-    //// Transient ////
     /**
-     * Key of link id.
+     * Key of link ping time.
      */
-    public static final String LINK_T_ID = "linkId";
+    public static final String LINK_PING_TIME = "linkPingTime";
 
+    /**
+     * Key of link card HTML.
+     */
+    public static final String LINK_CARD_HTML = "linkCardHTML";
+
+    //// Transient ////
     /**
      * Key of link keywords.
      */
@@ -123,38 +122,39 @@ public final class Link {
      */
     public static final String LINK_T_COUNT = "linkCnt";
 
-    // Type constants
     /**
-     * Link type - forge.
+     * Key of link description.
      */
-    public static final int LINK_TYPE_C_FORGE = 0;
+    public static final String LINK_T_DESCRIPTION = "linkDescription";
 
-    // Address constants
     /**
-     * Link blacklist.
+     * Key of link image.
      */
-    public static final Set<String> LINK_ADDR_C_BLACKLIST = new HashSet<>(Arrays.asList(
-            "hacpai"));
+    public static final String LINK_T_IMAGE = "linkImage";
+
+    /**
+     * Key of link site.
+     */
+    public static final String LINK_T_SITE = "linkSite";
+
+    /**
+     * Key of link site domain.
+     */
+    public static final String LINK_T_SITE_DOMAIN = "linkSiteDomain";
+
+    /**
+     * Key of link site address.
+     */
+    public static final String LINK_T_SITE_ADDR = "linkSiteAddr";
+
+    /**
+     * Key of link site icon.
+     */
+    public static final String LINK_T_SITE_ICON = "linkSiteIcon";
 
     /**
      * Private constructor.
      */
     private Link() {
-    }
-
-    /**
-     * Checks whether the specified link address in blacklist.
-     *
-     * @param linkAddr the specified link address
-     * @return {@code true} if it in blacklist, otherwise returns {@code false}
-     */
-    public static final boolean inAddrBlacklist(final String linkAddr) {
-        for (final String site : LINK_ADDR_C_BLACKLIST) {
-            if (StringUtils.containsIgnoreCase(linkAddr, site)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

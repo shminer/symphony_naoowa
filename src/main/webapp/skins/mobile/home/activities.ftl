@@ -58,7 +58,7 @@
                                             <a href="${servePath}/activity/yesterday-liveness-reward">${activityYesterdayLivenessRewardLabel}</a>
                                         </h2>
                                         <span class="ft-fade content-reset">
-                                            领取昨日 <a href="https://naoowa.cn/" class="ft-gray" rel="nofollow">活跃度奖励</a> ，目前最高可以获得 <code>${activitYesterdayLivenessRewardMaxPoint?c}</code>
+                                            领取昨日 <a href="https://hacpai.com/article/1458624687933" class="ft-gray" rel="nofollow">活跃度奖励</a> ，目前最高可以获得 <code>${activitYesterdayLivenessRewardMaxPoint?c}</code>
                                         </span>
                                     </div>
                                 </div>
@@ -86,6 +86,18 @@
                                             <a href="${servePath}/activity/character">${characterLabel}</a>
                                         </h2>
                                         <span class="ft-fade content-reset">${activityCharacterTitleLabel}</span>
+                                    </div>
+                                </div>
+                            </li>
+                            <li>
+                                <div class='fn-flex'>
+                                    <div class="avatar tooltipped tooltipped-ne"
+                                         aria-label="${chatRoomLabel}" style="background-image:url('${staticServePath}/images/activities/chat.png')"></div>
+                                    <div class="fn-flex-1">
+                                        <h2 class="ft-13">
+                                            <a href="${servePath}/cr">${chatRoomLabel}</a>
+                                        </h2>
+                                        <span class="ft-fade content-reset">${activityChatTitleLabel}</span>
                                     </div>
                                 </div>
                             </li>
